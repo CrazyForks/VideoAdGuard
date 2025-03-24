@@ -138,3 +138,20 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
 // 页面加载监听：页面加载完成后执行
 window.addEventListener('load', () => AdDetector.analyze());
+
+// 添加 URL 变化监听
+let lastUrl = location.href;
+new MutationObserver(() => {
+  const url = location.href;
+  if (url !== lastUrl) {
+    lastUrl = url;
+    console.log('URL changed:', url);
+    AdDetector.analyze();
+  }
+}).observe(document, { subtree: true, childList: true });
+
+// 监听 history 变化
+window.addEventListener('popstate', () => {
+  console.log('History changed:', location.href);
+  AdDetector.analyze();
+});
