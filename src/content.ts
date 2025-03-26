@@ -13,6 +13,12 @@ class AdDetector {
 
   public static async analyze() {
     try {
+      // 移除已存在的跳过按钮
+      const existingButton = document.querySelector('.skip-ad-button10032');
+      if (existingButton) {
+        existingButton.remove();
+      }
+      
       const bvid = await this.getCurrentBvid();
       
       // 获取视频信息
