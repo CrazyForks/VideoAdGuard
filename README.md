@@ -35,7 +35,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 ## 使用方法
 
 1. **Edge浏览器**：安装完成后，点击插件图标完成设置
-   ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard1.png)
+    ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard1.png)
 2. **其他浏览器**：安装完成后，进入B站视频页面，点击右下角齿轮图标进行设置
     ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard2.png)
 3. 设置API密钥和模型（详见下方API设置说明）
