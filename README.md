@@ -2,7 +2,7 @@
 
 VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具，能够自动识别B站视频中的植入广告内容，并提供跳过广告的功能。
 
-![VideoAdGuard Logo](./icons/icon.png)
+![VideoAdGuard Logo](./icons/icon128.png)
 
 ## 功能特点
 
@@ -35,7 +35,9 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 ## 使用方法
 
 1. **Edge浏览器**：安装完成后，点击插件图标完成设置
+   ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard1.png)
 2. **其他浏览器**：安装完成后，进入B站视频页面，点击右下角齿轮图标进行设置
+    ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard2.png)
 3. 设置API密钥和模型（详见下方API设置说明）
 4. 打开任意带有字幕的B站视频，插件会自动检测广告内容
 5. 当检测到广告时，会在视频播放器右下角显示"跳过广告"按钮
@@ -79,6 +81,40 @@ VideoAdGuard通过以下步骤检测视频中的植入广告：
 4. 根据分析结果确定广告时间段
 5. 在界面上显示跳过按钮
 
+## 目录结构
+
+```tree
+VideoAdGuard
+├── VideoAdGuard/      # 构建输出目录
+├── _locales/          # i18n资源
+├── icons/             # 插件图标资源
+├── src/               # 源代码目录
+├── VideoAdGuard.user.js   # 油猴脚本版本
+├── manifest.json      # Chrome扩展配置文件
+├── package.json       # 项目依赖配置
+├── tsconfig.json      # TypeScript配置
+├── webpack.config.js  # Webpack构建配置
+├── LICENSE            # 开源许可证
+└── README.md          # 项目说明文档
+```
+
+## 自行构建
+
+如果你想自行构建VideoAdGuard，可以按照以下步骤进行：
+
+1. 克隆本仓库到本地：
+   ```bash
+   git clone https://github.com/Warma10032/VideoAdGuard.git
+   cd VideoAdGuard
+   ```
+2. 安装依赖：
+   ```bash
+   npm install
+   ```
+3. 构建插件：
+   ```bash
+   npm run build
+   ```
 ## 开源与贡献
 
 本项目完全开源，欢迎贡献代码和提出建议：
