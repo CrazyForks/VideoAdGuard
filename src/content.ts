@@ -28,7 +28,7 @@ class AdDetector {
 
       // 获取字幕
       if (!playerInfo.subtitle?.subtitles?.length) {
-        console.log('无字幕');
+        console.log('【VideoAdGuard】无字幕');
         this.adDetectionResult = '当前视频无字幕，无法检测';
         return;
       }
@@ -50,7 +50,7 @@ class AdDetector {
       });
 
       if (result.exist) {
-        console.log('检测到广告片段:', JSON.stringify(result.index_lists));
+        console.log('【VideoAdGuard】检测到广告片段:', JSON.stringify(result.index_lists));
         const second_lists = this.index2second(result.index_lists, captionsData.body);
         AdDetector.adTimeRanges = second_lists;
         this.adDetectionResult = `发现${second_lists.length}处广告：${
@@ -119,14 +119,14 @@ class AdDetector {
     // 点击跳过按钮
     skipButton.addEventListener('click', () => {
       const currentTime = video.currentTime;
-      console.log('当前时间:', currentTime);
+      console.log('【VideoAdGuard】当前时间:', currentTime);
       const adSegment = this.adTimeRanges.find(([start, end]) => 
         currentTime >= start && currentTime < end
       );
 
       if (adSegment) {
         video.currentTime = adSegment[1]; // 跳到广告段结束时间
-        console.log('跳转时间:',adSegment[1]);
+        console.log('【VideoAdGuard】跳转时间:',adSegment[1]);
       }
     });
   }
@@ -151,13 +151,13 @@ new MutationObserver(() => {
   const url = location.href;
   if (url !== lastUrl) {
     lastUrl = url;
-    console.log('URL changed:', url);
+    console.log('【VideoAdGuard】URL changed:', url);
     AdDetector.analyze();
   }
 }).observe(document, { subtree: true, childList: true });
 
 // 监听 history 变化
 window.addEventListener('popstate', () => {
-  console.log('History changed:', location.href);
+  console.log('【VideoAdGuard】History changed:', location.href);
   AdDetector.analyze();
 });

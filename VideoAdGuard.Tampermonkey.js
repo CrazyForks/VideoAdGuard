@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         B站视频植入广告检测器 VideoAdGuard
-// @version      1.1.0
+// @version      1.1.1
 // @author       Warma10032
 // @namespace    https://github.com/Warma10032/
 // @license      GPLv2
@@ -135,7 +135,7 @@
         async fetchWithCookie(url, params = {}) {
             const queryString = new URLSearchParams(params).toString();
             const fullUrl = `${url}?${queryString}`;
-            console.log('【VideoAdGuard】BilibiliService Fetching URL:', fullUrl);
+            console.log('【VideoAdGuard】[BilibiliService] Fetching URL:', fullUrl);
             
             try {
                 const response = await fetch(fullUrl, {
@@ -148,7 +148,7 @@
                 });
                 
                 const data = await response.json();
-                console.log('【VideoAdGuard】BilibiliService Response data:', data);
+                console.log('【VideoAdGuard】[BilibiliService] Response data:', data);
                 
                 if (data.code !== 0) {
                     throw new Error(data.message);
@@ -162,43 +162,43 @@
         },
         
         async getVideoInfo(bvid) {
-            console.log('【VideoAdGuard】BilibiliService Getting video info for bvid:', bvid);
+            console.log('【VideoAdGuard】[BilibiliService] Getting video info for bvid:', bvid);
             const data = await this.fetchWithCookie(
                 'https://api.bilibili.com/x/web-interface/view',
                 { bvid }
             );
-            console.log('【VideoAdGuard】BilibiliService Video info result:', data);
+            console.log('【VideoAdGuard】[BilibiliService] Video info result:', data);
             return data;
         },
         
         async getComments(bvid) {
-            console.log('【VideoAdGuard】BilibiliService Getting comments for bvid:', bvid);
+            console.log('【VideoAdGuard】[BilibiliService] Getting comments for bvid:', bvid);
             const data = await this.fetchWithCookie(
                 'https://api.bilibili.com/x/v2/reply',
                 { oid: bvid, type: 1 }
             );
-            console.log('【VideoAdGuard】BilibiliService Comments result:', data);
+            console.log('【VideoAdGuard】[BilibiliService] Comments result:', data);
             return data;
         },
         
         async getPlayerInfo(bvid, cid) {
-            console.log('【VideoAdGuard】BilibiliService Getting player info for bvid:', bvid, 'cid:', cid);
+            console.log('【VideoAdGuard】[BilibiliService] Getting player info for bvid:', bvid, 'cid:', cid);
             const params = { bvid, cid };
             const signedParams = await WbiUtils.encWbi(params);
             const data = await this.fetchWithCookie(
                 'https://api.bilibili.com/x/player/wbi/v2',
                 signedParams
             );
-            console.log('【VideoAdGuard】BilibiliService Player info result:', data);
+            console.log('【VideoAdGuard】[BilibiliService] Player info result:', data);
             return data;
         },
         
         async getCaptions(url) {
-            console.log('【VideoAdGuard】BilibiliService Getting captions from URL:', url);
+            console.log('【VideoAdGuard】[BilibiliService] Getting captions from URL:', url);
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                console.log('【VideoAdGuard】BilibiliService Captions result:', data);
+                console.log('【VideoAdGuard】[BilibiliService] Captions result:', data);
                 return data;
             } catch (error) {
                 console.error('【VideoAdGuard】获取字幕失败:', error);
@@ -262,7 +262,7 @@
 下面我会给你这个视频的字幕字典，形式为 index: context. 请你完整地找出其中的植入广告，返回json格式的数据。注意要返回一整段的广告，从广告的引入到结尾重新转折回到视频内容前，因此不要返回太短的广告，可以组合成一整段返回。
 字幕内容：${JSON.stringify(videoInfo.captions)}
 先返回'exist': bool。true表示存在植入广告，false表示不存在植入广告。
-再返回'index_lists': list[list[int]]。二维数组，行数表示广告的段数，一般来说视频是没有广告的，但也有小部分会植入一段广告，极少部分是多段广告，因此不要返回过多，而是返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段广告的开头结尾，start和end是字幕的index。`;
+再返回'index_lists': list[list[int]]。二维数组，行数表示广告的段数，一般来说视频是没有广告的，但也有小部分会植入一段广告，极少部分是多段广告，因此不要返回过多，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段广告的开头结尾，start和end是字幕的index。`;
             console.log('【VideoAdGuard】构建提示词成功:', prompt);
             return prompt;
         },
