@@ -35,11 +35,17 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 ## 使用方法
 
 1. **Edge浏览器**：安装完成后，点击插件图标完成设置
+    
     ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard1.png)
+    
 2. **其他浏览器**：安装完成后，进入B站视频页面，点击右下角齿轮图标进行设置
+
     ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard2.png)
+
 3. 设置API密钥和模型（详见下方API设置说明）
+
 4. 打开任意带有字幕的B站视频，插件会自动检测广告内容
+
 5. 当检测到广告时，会在视频播放器右下角显示"跳过广告"按钮
 
 ## API设置说明
