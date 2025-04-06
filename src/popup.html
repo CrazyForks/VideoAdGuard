@@ -44,15 +44,24 @@
       background-color: #f2dede;
       color: #a94442;
     }
+    .localOllama-field {
+      display: flex;
+      align-items: top;
+      word-break: keep-all;
+    }
   </style>
 </head>
 <body>
   <h3>B站广告检测设置</h3>
+  <div class="form-group localOllama-field">
+    <label for="localOllama">连接到本地Ollama</label>
+    <input type="checkbox" id="localOllama">
+  </div>
   <div class="form-group">
     <label for="apiUrl">API地址：</label>
     <input type="text" id="apiUrl" placeholder="请输入API地址" value="https://open.bigmodel.cn/api/paas/v4/chat/completions">
   </div>
-  <div class="form-group">
+  <div class="form-group apiKey-field">
     <label for="apiKey">API密钥：</label>
     <input type="password" id="apiKey" placeholder="请输入API密钥">
   </div>

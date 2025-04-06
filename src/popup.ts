@@ -1,17 +1,37 @@
 export {};
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const apiUrlInput = document.getElementById('apiUrl') as HTMLInputElement;
-  const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
-  const modelInput = document.getElementById('model') as HTMLInputElement;
-  const saveButton = document.getElementById('save') as HTMLButtonElement;
-  const messageDiv = document.getElementById('message');
-  const resultDiv = document.getElementById('result');
-
-  if (!apiUrlInput || !apiKeyInput || !modelInput || !saveButton || !messageDiv || !resultDiv) return;
+document.addEventListener("DOMContentLoaded", async () => {
+  const apiUrlInput = document.getElementById("apiUrl") as HTMLInputElement;
+  const apiKeyInput = document.getElementById("apiKey") as HTMLInputElement;
+  const modelInput = document.getElementById("model") as HTMLInputElement;
+  const saveButton = document.getElementById("save") as HTMLButtonElement;
+  const messageDiv = document.getElementById("message");
+  const resultDiv = document.getElementById("result");
+  const localOllamaCheckbox = document.getElementById(
+    "localOllama"
+  ) as HTMLInputElement;
+  localOllamaCheckbox.addEventListener('change', toggleOllamaField);
+  function toggleOllamaField(e: Event) {
+    const target = e.target as HTMLInputElement;
+    (document.getElementsByClassName("apiKey-field")[0] as HTMLElement).style.display = target.checked? "none": "block";
+  }
+  if (
+    !apiUrlInput ||
+    !apiKeyInput ||
+    !modelInput ||
+    !saveButton ||
+    !messageDiv ||
+    !resultDiv
+  )
+    return;
 
   // 加载已保存的设置
-  const settings = await chrome.storage.local.get(['apiUrl', 'apiKey', 'model']);
+  const settings = await chrome.storage.local.get([
+    "apiUrl",
+    "apiKey",
+    "model",
+    "enableLocalOllama",
+  ]);
   if (settings.apiUrl) {
     apiUrlInput.value = settings.apiUrl;
   }
@@ -22,11 +42,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     modelInput.value = settings.model;
   }
 
+  if (settings.enableLocalOllama) {
+    localOllamaCheckbox.checked = settings.enableLocalOllama;
+    (document.getElementsByClassName("apiKey-field")[0] as HTMLElement).style.display = "none";
+  }
+
   // 保存设置
-  saveButton.addEventListener('click', async () => {
+  saveButton.addEventListener("click", async () => {
     const apiUrl = apiUrlInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
     const model = modelInput.value.trim();
+    const enableLocalOllama = localOllamaCheckbox.checked;
 
     if (!apiUrl) {
       messageDiv.textContent = '请输入API地址';
@@ -34,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (!apiKey) {
+    if (!enableLocalOllama && !apiKey) {
       messageDiv.textContent = '请输入API密钥';
       messageDiv.className = 'error';
       return;
@@ -47,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-      await chrome.storage.local.set({ apiUrl, apiKey, model });
+      await chrome.storage.local.set({ apiUrl, apiKey, model, enableLocalOllama});
       messageDiv.textContent = '设置已保存';
       messageDiv.className = 'success';
     } catch (error) {

@@ -4,41 +4,75 @@ export class AIService {
     topComment: string | null;
     captions: Record<number, string>;
   }) {
-    console.log('【VideoAdGuard】开始分析视频信息:', videoInfo);
-    const apiKey = await this.getApiKey();
-    if (!apiKey) {
-      throw new Error('未设置API密钥');
+    console.log("【VideoAdGuard】开始分析视频信息:", videoInfo);
+    const enableLocalOllama = await this.getEnableLocalOllama();
+    if (enableLocalOllama) {
+      const response = await fetch(await this.getApiUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: await this.getModel(),
+          messages: [
+            {
+              role: "system",
+              content:
+                "你是一个敏感的视频观看者，能根据视频的连贯性改变和宣传推销类内容，找出视频中可能存在的植入广告。内容如果和主题相关，即使是推荐/评价也可能只是分享而不是广告，重点要看有没有提到通过视频博主可以受益的渠道进行购买。",
+            },
+            {
+              role: "user",
+              content: this.buildPrompt(videoInfo),
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 1024,
+          format: "json",
+          stream: false,
+        }),
+      });
+      console.log("【VideoAdGuard】API请求已发送");
+      const data = await response.json();
+      console.log("【VideoAdGuard】收到API响应:", data);
+      return JSON.parse(data.message.content);
+    } else {
+      console.log("【VideoAdGuard】开始分析视频信息:", videoInfo);
+      const apiKey = await this.getApiKey();
+      if (!apiKey) {
+        throw new Error("未设置API密钥");
+      }
+      console.log("【VideoAdGuard】成功获取API密钥");
+
+      const response = await fetch(await this.getApiUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: await this.getModel(),
+          messages: [
+            {
+              role: "system",
+              content:
+                "你是一个敏感的视频观看者，能根据视频的连贯性改变和宣传推销类内容，找出视频中可能存在的植入广告。内容如果和主题相关，即使是推荐/评价也可能只是分享而不是广告，重点要看有没有提到通过视频博主可以受益的渠道进行购买。",
+            },
+            {
+              role: "user",
+              content: this.buildPrompt(videoInfo),
+            },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+          max_tokens: 1024,
+        }),
+      });
+      console.log("【VideoAdGuard】API请求已发送");
+
+      const data = await response.json();
+      console.log("【VideoAdGuard】收到API响应:", data);
+      return JSON.parse(data.choices[0].message.content);
     }
-    console.log('【VideoAdGuard】成功获取API密钥');
-
-    const response = await fetch(await this.getApiUrl(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: await this.getModel(),
-        messages: [
-          {
-            'role': 'system',
-            'content': '你是一个敏感的视频观看者，能根据视频的连贯性改变和宣传推销类内容，找出视频中可能存在的植入广告。内容如果和主题相关，即使是推荐/评价也可能只是分享而不是广告，重点要看有没有提到通过视频博主可以受益的渠道进行购买。'
-          },
-          {
-            'role': 'user',
-            'content': this.buildPrompt(videoInfo)
-          }
-        ],
-        response_format: { 'type': 'json_object' },
-        temperature: 0.1,
-        max_tokens: 1024
-      })
-    });
-    console.log('【VideoAdGuard】API请求已发送');
-
-    const data = await response.json();
-    console.log('【VideoAdGuard】收到API响应:', data);
-    return JSON.parse(data.choices[0].message.content);
   }
 
   private static buildPrompt(videoInfo: {
@@ -78,5 +112,13 @@ export class AIService {
     return result.model || 'glm-4-flash';
   }
 
-  
+  private static async getEnableLocalOllama(): Promise<boolean> {
+    console.log("【VideoAdGuard】正在获取本地Ollama设置");
+    const result = await chrome.storage.local.get("enableLocalOllama");
+    console.log(
+      "【VideoAdGuard】本地Ollama设置状态:",
+      result.enableLocalOllama ? "已设置" : "未设置"
+    );
+    return result.enableLocalOllama || false;
+  }
 }
