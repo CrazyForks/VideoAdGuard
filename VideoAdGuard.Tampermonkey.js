@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         B站视频植入广告检测器 VideoAdGuard
-// @version      1.1.1
+// @version      1.1.2
 // @author       Warma10032
 // @namespace    https://github.com/Warma10032/
 // @license      GPLv2
@@ -209,22 +209,15 @@
     
     // AI 服务类
     const AIService = {
-        async analyze(videoInfo) {
-            console.log('【VideoAdGuard】汇总视频信息:', videoInfo);
-            const apiKey = this.getApiKey();
-            if (!apiKey) {
-                throw new Error('未设置API密钥');
-            }
-            console.log('【VideoAdGuard】成功获取API密钥');
+        // 添加通用请求方法
+        async makeRequest(videoInfo, config) {
+            console.log('【VideoAdGuard】准备向大模型发送请求');
             
             return new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
                     method: 'POST',
                     url: this.getApiUrl(),
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
+                    headers: config.headers,
                     data: JSON.stringify({
                         model: this.getModel(),
                         messages: [
@@ -237,22 +230,72 @@
                                 'content': this.buildPrompt(videoInfo)
                             }
                         ],
-                        response_format: { 'type': 'json_object' },
                         temperature: 0.1,
-                        max_tokens: 1024
+                        max_tokens: 1024,
+                        ...config.bodyExtra
                     }),
-                    onload: (response) => {
-                        try {
-                            const data = JSON.parse(response.responseText);
-                            console.log('【VideoAdGuard】收到大模型响应:', data);
-                            resolve(JSON.parse(data.choices[0].message.content));
-                        } catch (error) {
-                            reject(error);
+                    onload: function(response) {
+                        if (response.status >= 200 && response.status < 300) {
+                            try {
+                                const data = JSON.parse(response.responseText);
+                                console.log('【VideoAdGuard】收到大模型响应:', data);
+                                resolve(data);
+                            } catch (error) {
+                                console.error('【VideoAdGuard】解析大模型响应失败:', error);
+                                reject(error);
+                            }
+                        } else {
+                            console.error('【VideoAdGuard】请求大模型失败:', response.statusText);
+                            reject(new Error('请求失败: ' + response.statusText));
                         }
                     },
-                    onerror: reject
+                    onerror: function(error) {
+                        console.error('【VideoAdGuard】请求大模型错误:', error);
+                        reject(error);
+                    }
                 });
             });
+        },
+        
+        async analyze(videoInfo) {
+            console.log('【VideoAdGuard】开始分析视频信息:', videoInfo);
+            const enableLocalOllama = this.getEnableLocalOllama();
+            
+            try {
+                if (enableLocalOllama) {
+                    console.log('【VideoAdGuard】使用本地Ollama模式');
+                    const data = await this.makeRequest(videoInfo, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        bodyExtra: {
+                            format: "json",
+                            stream: false
+                        }
+                    });
+                    return JSON.parse(data.message.content);
+                } else {
+                    const apiKey = this.getApiKey();
+                    if (!apiKey) {
+                        throw new Error('未设置API密钥');
+                    }
+                    console.log('【VideoAdGuard】成功获取API密钥');
+                    
+                    const data = await this.makeRequest(videoInfo, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        bodyExtra: {
+                            response_format: { type: "json_object" }
+                        }
+                    });
+                    return JSON.parse(data.choices[0].message.content);
+                }
+            } catch (error) {
+                console.error('【VideoAdGuard】分析失败:', error);
+                throw error;
+            }
         },
         
         buildPrompt(videoInfo) {
@@ -265,6 +308,10 @@
 再返回'index_lists': list[list[int]]。二维数组，行数表示广告的段数，一般来说视频是没有广告的，但也有小部分会植入一段广告，极少部分是多段广告，因此不要返回过多，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段广告的开头结尾，start和end是字幕的index。`;
             console.log('【VideoAdGuard】构建提示词成功:', prompt);
             return prompt;
+        },
+
+        getEnableLocalOllama() {
+            return GM_getValue('enableLocalOllama', false);
         },
         
         getApiUrl() {
@@ -490,25 +537,130 @@
                 box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
                 z-index: 10000;
                 width: 300px;
-                color: #333; /* 确保文字颜色可见 */
+                color: #333;
             `;
             
+            // 添加样式
+            const style = document.createElement('style');
+            style.textContent = `
+                .vag-settings-panel .form-group {
+                    margin-bottom: 10px;
+                }
+                .vag-settings-panel label {
+                    display: block;
+                    margin-bottom: 5px;
+                }
+                .vag-settings-panel input[type="text"],
+                .vag-settings-panel input[type="password"] {
+                    width: 100%;
+                    padding: 5px;
+                    box-sizing: border-box;
+                }
+                .vag-settings-panel button {
+                    width: 100%;
+                    padding: 8px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-bottom: 5px;
+                }
+                .vag-settings-panel button:hover {
+                    background-color: #45a049;
+                }
+                .vag-settings-panel #vag-message {
+                    margin-top: 10px;
+                    padding: 5px;
+                    border-radius: 4px;
+                }
+                .vag-settings-panel .success {
+                    background-color: #dff0d8;
+                    color: #3c763d;
+                }
+                .vag-settings-panel .error {
+                    background-color: #f2dede;
+                    color: #a94442;
+                }
+                .vag-settings-panel .localOllama-field {
+                    display: flex;
+                    align-items: top;
+                    word-break: keep-all;
+                }
+                .vag-settings-panel .checkbox-container {
+                    display: flex;
+                    align-items: center;
+                    position: relative;
+                    padding-left: 30px;
+                    cursor: pointer;
+                    user-select: none;
+                }
+                .vag-settings-panel .checkbox-container input {
+                    position: absolute;
+                    opacity: 0;
+                    cursor: pointer;
+                    height: 0;
+                    width: 0;
+                }
+                .vag-settings-panel .checkmark {
+                    position: absolute;
+                    left: 0;
+                    height: 20px;
+                    width: 20px;
+                    background-color: #eee;
+                    border-radius: 4px;
+                    transition: all 0.2s;
+                }
+                .vag-settings-panel .checkbox-container:hover input ~ .checkmark {
+                    background-color: #ccc;
+                }
+                .vag-settings-panel .checkbox-container input:checked ~ .checkmark {
+                    background-color: #4CAF50;
+                }
+                .vag-settings-panel .checkmark:after {
+                    content: "";
+                    position: absolute;
+                    display: none;
+                }
+                .vag-settings-panel .checkbox-container input:checked ~ .checkmark:after {
+                    display: block;
+                }
+                .vag-settings-panel .checkbox-container .checkmark:after {
+                    left: 7px;
+                    top: 3px;
+                    width: 5px;
+                    height: 10px;
+                    border: solid white;
+                    border-width: 0 2px 2px 0;
+                    transform: rotate(45deg);
+                }
+                .vag-settings-panel #vag-local-ollama {
+                    width: auto;
+                    margin-right: 5px;
+                }
+            `;
+            document.head.appendChild(style);
+            
             panel.innerHTML = `
-                <h3 style="margin-top: 0; color: #333;">VideoAdGuard 设置</h3>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; color: #333;">API地址：</label>
-                    <input type="text" id="vag-api-url" style="width: 100%; padding: 5px; box-sizing: border-box; color: #333; background: #fff; border: 1px solid #ccc;" 
-                           value="${AIService.getApiUrl()}">
+                <h3>B站广告检测设置</h3>
+                <div class="form-group localOllama-field">
+                    <label for="vag-local-ollama" class="checkbox-container">
+                        <input type="checkbox" id="vag-local-ollama" ${GM_getValue('enableLocalOllama', false) ? 'checked' : ''}>
+                        <span class="checkmark"></span>
+                        连接到本地Ollama
+                    </label>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; color: #333;">API密钥：</label>
-                    <input type="password" id="vag-api-key" style="width: 100%; padding: 5px; box-sizing: border-box; color: #333; background: #fff; border: 1px solid #ccc;" 
-                           value="${AIService.getApiKey() || ''}">
+                <div class="form-group">
+                    <label for="vag-api-url">API地址：</label>
+                    <input type="text" id="vag-api-url" placeholder="请输入API地址" value="${GM_getValue('apiUrl', DEFAULT_API_URL)}">
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; color: #333;">模型名称：</label>
-                    <input type="text" id="vag-model" style="width: 100%; padding: 5px; box-sizing: border-box; color: #333; background: #fff; border: 1px solid #ccc;" 
-                           value="${AIService.getModel()}">
+                <div class="form-group apiKey-field" id="vag-api-key-group" style="${GM_getValue('enableLocalOllama', false) ? 'display:none' : ''}">
+                    <label for="vag-api-key">API密钥：</label>
+                    <input type="password" id="vag-api-key" placeholder="请输入API密钥" value="${GM_getValue('apiKey', '')}">
+                </div>
+                <div class="form-group">
+                    <label for="vag-model">模型名称：</label>
+                    <input type="text" id="vag-model" placeholder="请输入模型名称" value="${GM_getValue('model', DEFAULT_MODEL)}">
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                     <button id="vag-save" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -518,40 +670,78 @@
                         取消
                     </button>
                 </div>
+                <div id="vag-message"></div>
             `;
             
             document.body.appendChild(panel);
             
-            // 确保输入框可以正常工作
+            // 获取元素
             const apiUrlInput = document.getElementById('vag-api-url');
             const apiKeyInput = document.getElementById('vag-api-key');
             const modelInput = document.getElementById('vag-model');
+            const ollamaCheckbox = document.getElementById('vag-local-ollama');
+            const apiKeyGroup = document.getElementById('vag-api-key-group');
+            const messageDiv = document.getElementById('vag-message');
             
-            // 防止事件冒泡导致的输入问题
-            [apiUrlInput, apiKeyInput, modelInput].forEach(input => {
+            // Ollama 复选框事件
+            ollamaCheckbox.addEventListener('change', () => {
+                apiKeyGroup.style.display = ollamaCheckbox.checked ? 'none' : 'block';
+            });
+            
+            // 防止事件冒泡
+            [apiUrlInput, apiKeyInput, modelInput, ollamaCheckbox].forEach(input => {
                 input.addEventListener('click', e => e.stopPropagation());
                 input.addEventListener('keydown', e => e.stopPropagation());
             });
+            
+            // 显示消息函数
+            const showMessage = (message, type) => {
+                messageDiv.textContent = message;
+                messageDiv.className = type;
+                setTimeout(() => {
+                    messageDiv.textContent = '';
+                    messageDiv.className = '';
+                }, 3000);
+            };
             
             // 保存按钮事件
             document.getElementById('vag-save').addEventListener('click', () => {
                 const apiUrl = apiUrlInput.value;
                 const apiKey = apiKeyInput.value;
                 const model = modelInput.value;
+                const enableLocalOllama = ollamaCheckbox.checked;
+                
+                if (!apiUrl) {
+                    showMessage('请输入API地址', 'error');
+                    return;
+                }
+                
+                if (!enableLocalOllama && !apiKey) {
+                    showMessage('请输入API密钥', 'error');
+                    return;
+                }
+                
+                if (!model) {
+                    showMessage('请输入模型名称', 'error');
+                    return;
+                }
                 
                 GM_setValue('apiUrl', apiUrl);
                 GM_setValue('apiKey', apiKey);
                 GM_setValue('model', model);
+                GM_setValue('enableLocalOllama', enableLocalOllama);
                 
-                this.showNotification('设置已保存');
-                panel.remove();
+                showMessage('设置已保存', 'success');
+                setTimeout(() => {
+                    panel.remove();
+                }, 1000);
             });
             
             // 取消按钮事件
             document.getElementById('vag-cancel').addEventListener('click', () => {
                 panel.remove();
             });
-        }
+        },
     };
     
     // 初始化
