@@ -54,7 +54,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 - **API地址**：`https://open.bigmodel.cn/api/paas/v4/chat/completions`（智谱AI）
 - **模型名称**：`glm-4-flash`（智谱AI免费模型）
-- **API密钥**：需要在[智谱AI平台](https://bigmodel.cn/)注册并获取
+- **API密钥**：需要在[智谱AI平台](https://bigmodel.cn/usercenter/proj-mgmt/apikeys)注册并获取
 
 插件支持所有兼容OpenAI SDK的大语言模型。目前我们已经测试了部分模型，但还需要更多用户的测试反馈。如果您使用了下表中的模型，请通过GitHub Issues告诉我们您的使用体验，帮助我们完善兼容性列表。
 
@@ -67,7 +67,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 | 字节跳动 (豆包系列) | ❓ | [豆包](https://www.volcengine.com/) |
 | 阿里云 (通义千问系列) | ❓ | [通义千问](https://bailian.console.aliyun.com/) |
 | Anthropic Claude | ❓ | [Claude](https://console.anthropic.com/) |
-| Google Gemini | ❓ | [Gemini](https://ai.google.dev/) |
+| Google Gemini | ✅ | [Gemini](https://ai.google.dev/) |
 | MiniMax | ❓ | [MiniMax](https://api.minimax.chat/) |
 
 ## 注意事项
