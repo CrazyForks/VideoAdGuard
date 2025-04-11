@@ -28,7 +28,7 @@ class AdDetector {
 
       // 获取字幕
       if (!playerInfo.subtitle?.subtitles?.length) {
-        console.log('【VideoAdGuard】无字幕');
+        console.log('【VideoAdGuard】当前视频无字幕，无法检测');
         this.adDetectionResult = '当前视频无字幕，无法检测';
         return;
       }
@@ -43,11 +43,37 @@ class AdDetector {
       });
 
       // AI分析
-      const result = await AIService.analyze({
+      const rawResult = await AIService.detectAd({
         title: videoInfo.title,
         topComment: comments.upper?.top?.content?.message || null,
         captions
       });
+
+      // 处理可能的转义字符并解析 JSON
+      let result;
+      try {
+        const cleanJson = typeof rawResult === 'string' 
+          ? rawResult.replace(/\\n/g, '\n').replace(/\\/g, '') 
+          : JSON.stringify(rawResult);
+        
+        result = JSON.parse(cleanJson);
+        
+        // 验证返回数据格式
+        if (typeof result.exist !== 'boolean' || !Array.isArray(result.index_lists)) {
+          throw new Error('返回数据格式错误');
+        }
+        
+        // 验证 index_lists 格式
+        if (result.exist && !result.index_lists.every((item: number[]) =>
+          Array.isArray(item) && item.length === 2 && 
+          typeof item[0] === 'number' && typeof item[1] === 'number'
+        )) {
+          throw new Error('广告时间段格式错误');
+        }
+      } catch (e) {
+        console.error('【VideoAdGuard】大模型返回数据JSON解析失败:', e);
+        throw new Error(`AI返回数据格式错误: ${(e as Error).message}`);
+      }
 
       if (result.exist) {
         console.log('【VideoAdGuard】检测到广告片段:', JSON.stringify(result.index_lists));
@@ -59,6 +85,7 @@ class AdDetector {
         // 注入跳过按钮
         this.injectSkipButton();
       } else {
+        console.log('【VideoAdGuard】无广告内容');
         this.adDetectionResult = '无广告内容';
       }
 

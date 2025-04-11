@@ -3,34 +3,42 @@ export class AIService {
     headers: Record<string, string>,
     bodyExtra?: Record<string, any>
   }) {
-    const response = await fetch(await this.getApiUrl(), {
-      method: "POST",
+    const messageBody = {
+      model: await this.getModel(),
+      messages: [
+        {
+          role: "system",
+          content:
+            "你是一个敏感的视频观看者，能根据视频的连贯性改变和宣传推销类内容，找出视频中可能存在的植入广告。内容如果和主题相关，即使是推荐/评价也可能只是分享而不是广告，重点要看有没有提到通过视频博主可以受益的渠道进行购买。",
+        },
+        {
+          role: "user",
+          content: this.buildPrompt(videoInfo),
+        },
+      ],
+      temperature: 0,
+      max_tokens: 1024,
+      stream: false,
+      ...config.bodyExtra,
+    };
+
+    const response = await chrome.runtime.sendMessage({
+      url: await this.getApiUrl(),
       headers: config.headers,
-      body: JSON.stringify({
-        model: await this.getModel(),
-        messages: [
-          {
-            role: "system",
-            content: "你是一个敏感的视频观看者，能根据视频的连贯性改变和宣传推销类内容，找出视频中可能存在的植入广告。内容如果和主题相关，即使是推荐/评价也可能只是分享而不是广告，重点要看有没有提到通过视频博主可以受益的渠道进行购买。",
-          },
-          {
-            role: "user",
-            content: this.buildPrompt(videoInfo),
-          },
-        ],
-        temperature: 0.1,
-        max_tokens: 1024,
-        ...config.bodyExtra
-      }),
+      body: messageBody,
     });
 
     console.log("【VideoAdGuard】API请求已发送");
-    const data = await response.json();
-    console.log("【VideoAdGuard】收到API响应:", data);
-    return data;
+    if (response.success) {
+      console.log("【VideoAdGuard】收到API响应:", response.data);
+      return response.data;
+    } else {
+      console.error("【VideoAdGuard】请求失败:", response.error);
+      throw new Error(response.error);
+    }
   }
 
-  public static async analyze(videoInfo: {
+  public static async detectAd(videoInfo: {
     title: string;
     topComment: string | null;
     captions: Record<number, string>;
@@ -45,7 +53,6 @@ export class AIService {
         },
         bodyExtra: {
           format: "json",
-          stream: false,
         }
       });
       return JSON.parse(data.message.content);
@@ -55,15 +62,25 @@ export class AIService {
         throw new Error("未设置API密钥");
       }
       console.log("【VideoAdGuard】成功获取API密钥");
+      
+      const url = await this.getApiUrl();
+      const isOpenAI = url.includes("api.openai.com");
+      const isAzureOpenAI = url.includes("openai.azure.com");
+      const isZhipuAI = url.includes("open.bigmodel.cn");
+
+      const bodyExtra: any = {};
+
+      // 仅对支持 JSON 模式的模型添加 response_format
+      if (isOpenAI || isAzureOpenAI || isZhipuAI) {
+        bodyExtra.response_format = { type: "json_object" };
+      }
 
       const data = await this.makeRequest(videoInfo, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        bodyExtra: {
-          response_format: { type: "json_object" }
-        }
+        bodyExtra: Object.keys(bodyExtra).length ? bodyExtra : undefined,
       });
       return JSON.parse(data.choices[0].message.content);
     }
@@ -79,8 +96,16 @@ export class AIService {
 置顶评论：${videoInfo.topComment || '无'}
 下面我会给你这个视频的字幕字典，形式为 index: context. 请你完整地找出其中的植入广告，返回json格式的数据。注意要返回一整段的广告，从广告的引入到结尾重新转折回到视频内容前，因此不要返回太短的广告，可以组合成一整段返回。
 字幕内容：${JSON.stringify(videoInfo.captions)}
-先返回'exist': bool。true表示存在植入广告，false表示不存在植入广告。
-再返回'index_lists': list[list[int]]。二维数组，行数表示广告的段数，一般来说视频是没有广告的，但也有小部分会植入一段广告，极少部分是多段广告，因此不要返回过多，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段广告的开头结尾，start和end是字幕的index。`;
+示例输出：
+{
+  "exist": true,
+  "index_lists": [
+    [10, 20],
+    [30, 40]
+  ] 
+}
+"exist": bool. true表示存在植入广告，false表示不存在植入广告。
+"index_lists": list[list[int]]. 二维数组，行数表示广告的段数，不要返回过多段，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。`;
     console.log('【VideoAdGuard】构建提示词成功:', prompt);
     return prompt;
   }

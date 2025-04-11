@@ -1,0 +1,1 @@
+(()=>{"use strict";chrome.runtime.onMessage.addListener(((e,s,r)=>{const{url:t,headers:c,body:n}=e;return t&&c&&n?(fetch(t,{method:"POST",headers:c,body:JSON.stringify(n)}).then((e=>e.json())).then((e=>{r({success:!0,data:e})})).catch((e=>{r({success:!1,error:e.toString()})})),!0):(r({success:!1,error:"Invalid message structure"}),!1)}))})();

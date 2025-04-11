@@ -4,3 +4,6 @@ dist.crx
 dist.pem
 
 *.zip
+
+*test*
+*.test.*
