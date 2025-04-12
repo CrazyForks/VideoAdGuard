@@ -6,9 +6,16 @@ class AdDetector {
   private static adTimeRanges: number[][] = []; // 存储广告时间段
 
   private static async getCurrentBvid(): Promise<string> {
-    const match = window.location.pathname.match(/\/video\/(BV[\w]+)/);
-    if (!match) throw new Error('未找到视频ID');
-    return match[1];
+    // 先尝试从路径中匹配
+    const pathMatch = window.location.pathname.match(/BV[\w]+/);
+    if (pathMatch) return pathMatch[0];
+    
+    // 如果路径中没有，尝试从查询参数中获取
+    const urlParams = new URLSearchParams(window.location.search);
+    const bvid = urlParams.get('bvid');
+    if (bvid) return bvid;
+    
+    throw new Error('未找到视频ID');
   }
 
   public static async analyze() {

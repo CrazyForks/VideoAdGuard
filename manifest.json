@@ -36,7 +36,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.bilibili.com/video/*"],
+      "matches": [
+        "*://*.bilibili.com/video/*",
+        "*://*.bilibili.com/list/watchlater*"
+      ],
       "js": ["content.js"]
     }
   ]

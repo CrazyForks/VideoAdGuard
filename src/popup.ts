@@ -88,9 +88,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const currentTab = tabs[0];
     if (!currentTab || !currentTab.id) return;
 
+    // 检查是否在B站视频页面
+    if (!currentTab.url?.includes('bilibili.com/video/') && 
+    !currentTab.url?.includes('bilibili.com/list/watchlater')) {
+      resultDiv.textContent = '当前不在哔哩哔哩视频页面';
+      return;
+    }
+
     chrome.tabs.sendMessage(currentTab.id, { type: 'GET_AD_INFO' }, (response) => {
       if (chrome.runtime.lastError) {
-        resultDiv.textContent = '当前不在哔哩哔哩视频页面';
+        resultDiv.textContent = '插件未完全加载，请等待或刷新';
         return;
       }
 

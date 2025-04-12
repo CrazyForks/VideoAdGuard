@@ -64,14 +64,17 @@ export class AIService {
       console.log("【VideoAdGuard】成功获取API密钥");
       
       const url = await this.getApiUrl();
+      const model = await this.getModel();
       const isOpenAI = url.includes("api.openai.com");
       const isAzureOpenAI = url.includes("openai.azure.com");
       const isZhipuAI = url.includes("open.bigmodel.cn");
+      const isDeepseek = url.includes("api.deepseek.com");
+      const isQwen = url.includes("aliyuncs.com");
 
       const bodyExtra: any = {};
 
       // 仅对支持 JSON 模式的模型添加 response_format
-      if (isOpenAI || isAzureOpenAI || isZhipuAI) {
+      if (isOpenAI || isAzureOpenAI || isZhipuAI || isDeepseek || isQwen) {
         bodyExtra.response_format = { type: "json_object" };
       }
 
@@ -82,7 +85,7 @@ export class AIService {
         },
         bodyExtra: Object.keys(bodyExtra).length ? bodyExtra : undefined,
       });
-      return JSON.parse(data.choices[0].message.content);
+      return data.choices[0].message.content;
     }
   }
   
@@ -98,14 +101,9 @@ export class AIService {
 字幕内容：${JSON.stringify(videoInfo.captions)}
 示例输出：
 {
-  "exist": true,
-  "index_lists": [
-    [10, 20],
-    [30, 40]
-  ] 
-}
-"exist": bool. true表示存在植入广告，false表示不存在植入广告。
-"index_lists": list[list[int]]. 二维数组，行数表示广告的段数，不要返回过多段，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。`;
+  "exist": <bool. true表示存在植入广告，false表示不存在植入广告>,
+  "index_lists": <list[list[int]]. 二维数组，行数表示广告的段数，不要返回过多段，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。>
+}`;
     console.log('【VideoAdGuard】构建提示词成功:', prompt);
     return prompt;
   }

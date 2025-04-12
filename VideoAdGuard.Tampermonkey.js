@@ -279,7 +279,6 @@
                     if (!apiKey) {
                         throw new Error('未设置API密钥');
                     }
-                    console.log('【VideoAdGuard】成功获取API密钥');
                     
                     const data = await this.makeRequest(videoInfo, {
                         headers: {
