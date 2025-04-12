@@ -53,7 +53,11 @@ class AdDetector {
       let result;
       try {
         const cleanJson = typeof rawResult === 'string' 
-          ? rawResult.replace(/\\n/g, '\n').replace(/\\/g, '') 
+          ? rawResult
+              .replace(/\s+/g, '')     // 删除所有空白字符
+              .replace(/\\/g, '')
+              .replace(/json/g, '')
+              .replace(/```/g, '')
           : JSON.stringify(rawResult);
         
         result = JSON.parse(cleanJson);
@@ -90,7 +94,7 @@ class AdDetector {
       }
 
     } catch (error) {
-      console.error('分析失败:', error);
+      console.error('【VideoAdGuard】分析失败:', error);
       this.adDetectionResult = '分析失败：' + (error as Error).message;
     }
   }
