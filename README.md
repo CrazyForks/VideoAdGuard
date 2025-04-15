@@ -1,6 +1,7 @@
 # VideoAdGuard - B站视频植入广告检测器
 
 VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具，能够自动识别B站视频中的植入广告内容，并提供跳过广告的功能。
+如果你觉得这个插件有用，请给项目点个Star⭐支持一下！
 
 ![VideoAdGuard Logo](./icons/icon128.png)
 
@@ -140,5 +141,7 @@ VideoAdGuard
 
 本项目采用GPLv2许可证开源。
 
+## Star History
 
-如果你觉得这个插件有用，请给项目点个Star⭐支持一下！
+[![Star History Chart](https://api.star-history.com/svg?repos=Warma10032/videoadguard&type=Date)](https://www.star-history.com/#Warma10032/videoadguard&Date)
+
