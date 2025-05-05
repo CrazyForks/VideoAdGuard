@@ -8,60 +8,60 @@
       padding: 10px;
       font-family: sans-serif;
       font-size: 14px;
-      background-color: #f4f4f4; /* 给body一个浅灰色背景，突出卡片 */
+      background-color: #f4f4f4; 
     }
 
     .card {
       background-color: white;
-      border-radius: 8px; /* 圆角加大 */
+      border-radius: 8px; 
       padding: 12px;
       margin-bottom: 15px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* 添加细微阴影 */
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
     }
 
     .form-group {
-      margin-bottom: 10px; /* 组内间距调整 */
+      margin-bottom: 10px; 
       display: flex;
       align-items: center;
       flex-wrap: wrap;
     }
     .form-group:last-child {
-      margin-bottom: 0; /* 移除卡片内最后一个元素的下边距 */
+      margin-bottom: 0; 
     }
 
-    /* --- Checkbox Card Styles --- */
+    
     .checkbox-card .form-group {
-      justify-content: space-between; /* 让 label 和 input 分布在两端 */
-      padding: 8px 0; /* 给复选框行增加垂直内边距 */
-      border-bottom: 1px solid #eee; /* 添加分隔线 */
-      margin-bottom: 0; /* 移除默认下边距，用边框分隔 */
+      justify-content: space-between; 
+      padding: 8px 0; 
+      border-bottom: 1px solid #eee; 
+      margin-bottom: 0; 
     }
     .checkbox-card .form-group:last-child {
-      border-bottom: none; /* 最后一个复选框不需要底部分隔线 */
+      border-bottom: none; 
     }
 
     .checkbox-card label {
-      flex-basis: auto; /* label 宽度自适应 */
+      flex-basis: auto; 
       flex-shrink: 1;
-      text-align: left; /* 左对齐 */
+      text-align: left; 
       margin-right: 10px;
-      font-weight: normal; /* 字体不加粗 */
-      order: 1; /* label 在左边 */
+      font-weight: normal; 
+      order: 1; 
     }
 
     .checkbox-card input[type="checkbox"] {
-      order: 2; /* checkbox 在右边 */
-      margin-left: auto; /* 将 checkbox 推到最右边 */
-      width: 20px !important; /* 固定 checkbox 大小 */
+      order: 2; 
+      margin-left: auto; 
+      width: 20px !important; 
       height: 20px;
       cursor: pointer;
     }
 
-    /* --- API Settings Card Styles --- */
+    
     .api-settings-card label {
-      flex-basis: 80px; /* API标签宽度减小 */
+      flex-basis: 60px; 
       flex-shrink: 0;
-      text-align: left; /* API标签左对齐 */
+      text-align: left; 
       margin-right: 10px;
       word-break: keep-all;
       font-weight: normal;
@@ -76,10 +76,10 @@
       border-radius: 4px;
     }
 
-    /* --- General Styles --- */
+    
     h3 {
         margin-top: 0px;
-        text-align: center; /* 标题居中 */
+        text-align: center; 
         margin-bottom: 15px;
         color: #333;
     }
@@ -90,10 +90,10 @@
       background-color: #4CAF50;
       color: white;
       border: none;
-      border-radius: 6px; /* 轻微调整按钮圆角 */
+      border-radius: 6px; 
       cursor: pointer;
       font-size: 15px;
-      margin-top: 10px; /* 调整按钮与上方卡片的间距 */
+      margin-top: 10px; 
     }
     button:hover {
       background-color: #45a049;
@@ -104,7 +104,7 @@
       padding: 8px;
       border-radius: 4px;
       font-size: 13px;
-      text-align: center; /* 消息文本居中 */
+      text-align: center; 
     }
     .success {
       background-color: #d4edda;
@@ -117,11 +117,11 @@
       border: 1px solid #f5c6cb;
     }
 
-    /* --- Logic for hiding API Key --- */
+    
     body.ollama-enabled .api-settings-card .apiKey-field {
        display: none;
     }
-    /* Hide API URL and Model Name too if needed when Ollama is enabled */
+    
     /* body.ollama-enabled .api-settings-card .apiUrl-field,
        body.ollama-enabled .api-settings-card .model-field {
        display: none; 
