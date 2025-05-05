@@ -54,7 +54,7 @@
 <body>
   <h3>B站广告检测设置</h3>
   <div class="form-group localOllama-field">
-    <label for="localOllama">连接到本地Ollama</label>
+    <label for="localOllama">连接到本地Ollama捏</label>
     <input type="checkbox" id="localOllama">
   </div>
   <div class="form-group">
@@ -68,6 +68,10 @@
   <div class="form-group">
     <label for="model">模型名称：</label>
     <input type="text" id="model" placeholder="请输入模型名称" value="glm-4-flash">
+  </div>
+  <div class="form-group" style="display: flex; align-items: center;">
+    <label for="autoSkipAd" style="margin-right: 10px; margin-bottom: 0;">自动跳过广告</label>
+    <input type="checkbox" id="autoSkipAd" style="width: auto;">
   </div>
   <button id="save">保存设置</button>
   <div id="message"></div>

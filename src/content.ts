@@ -4,6 +4,7 @@ import { AIService } from './services/ai';
 class AdDetector {
   public static adDetectionResult: string | null = null; // 状态存储
   private static adTimeRanges: number[][] = []; // 存储广告时间段
+  private static timeUpdateListener: (() => void) | null = null; // 新增: 用于存储 timeupdate 监听器的引用
 
   private static async getCurrentBvid(): Promise<string> {
     // 先尝试从路径中匹配
@@ -26,6 +27,13 @@ class AdDetector {
         existingButton.remove();
       }
       
+      // 新增: 获取自动跳过设置
+      const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false }); // 提供默认值 false
+      console.log("【VideoAdGuard】读取自动跳过设置:", autoSkipAd);
+
+      // 新增: 在开始分析前移除旧监听器
+      this.removeAutoSkipListener();
+
       const bvid = await this.getCurrentBvid();
       
       // 获取视频信息
@@ -95,14 +103,23 @@ class AdDetector {
         }`;
         // 注入跳过按钮
         this.injectSkipButton();
+        // 新增: 如果开启了自动跳过，则设置监听器
+        if (autoSkipAd) {
+            console.log("【VideoAdGuard】设置自动跳过监听器");
+            this.setupAutoSkip();
+        }
       } else {
         console.log('【VideoAdGuard】无广告内容');
         this.adDetectionResult = '无广告内容';
+        // 新增: 无广告也移除监听器
+        this.removeAutoSkipListener();
       }
 
     } catch (error) {
       console.error('【VideoAdGuard】分析失败:', error);
       this.adDetectionResult = '分析失败：' + (error as Error).message;
+      // 新增: 出错时也移除监听器
+      this.removeAutoSkipListener();
     }
   }
 
@@ -167,6 +184,89 @@ class AdDetector {
         console.log('【VideoAdGuard】跳转时间:',adSegment[1]);
       }
     });
+  }
+
+  // 新增: 设置自动跳过监听器的方法
+  private static setupAutoSkip() {
+    const videoElement = document.querySelector("video");
+    // 注意B站更新可能导致选择器失效，这里使用时间显示元素作为触发源更可靠
+    const timeDisplayElement = document.querySelector(".bpx-player-ctrl-time-current"); 
+
+    if (!videoElement || !timeDisplayElement) {
+      console.error("【VideoAdGuard】未找到视频或时间显示元素，无法设置自动跳过");
+      this.removeAutoSkipListener(); // 找不到元素则清理并退出
+      return;
+    }
+    if (!this.adTimeRanges || this.adTimeRanges.length === 0) {
+      console.log("【VideoAdGuard】无广告时间段，无需设置自动跳过");
+      this.removeAutoSkipListener(); // 无广告时间段也清理并退出
+      return;
+    }
+
+    // 确保移除旧监听器
+    this.removeAutoSkipListener(); 
+
+    // 定义并保存 timeupdate 回调
+    this.timeUpdateListener = () => {
+      // 在回调内重新获取元素，应对DOM变化
+      const currentVideoElement = document.querySelector("video"); 
+      const currentTimeDisplayElement = document.querySelector(".bpx-player-ctrl-time-current");
+
+      if (!currentVideoElement || !currentTimeDisplayElement) {
+         console.warn("【VideoAdGuard】视频或时间元素在 timeupdate 中消失，移除监听器");
+         this.removeAutoSkipListener(); 
+         return;
+      }
+
+      const currentTimeStr = currentTimeDisplayElement.textContent;
+      if (!currentTimeStr) return; // 如果获取不到时间文本，则跳过此次处理
+
+      const currentTime = this.timeStrToSeconds(currentTimeStr);
+
+      for (const [start, end] of this.adTimeRanges) {
+         if (currentTime >= start && currentTime < end) { 
+            console.log(`【VideoAdGuard】检测到广告时间 ${this.second2time(start)}~${this.second2time(end)}，当前显示时间 ${currentTimeStr} (${currentTime}s)，准备跳过...`);
+            // 目标时间略微超过广告结束时间，防止误差，并确保不超出视频总长
+            const targetTime = Math.min(end + 0.1, currentVideoElement.duration); 
+            currentVideoElement.currentTime = targetTime; 
+            console.log(`【VideoAdGuard】已自动跳过到 ${this.second2time(targetTime)}`);
+            // 可选: 考虑在跳过后临时移除再添加监听器以避免快速连续触发
+            // this.removeAutoSkipListener();
+            // setTimeout(() => this.setupAutoSkip(), 50);
+            break; // 跳过一个广告段后退出循环
+          }
+      }
+    };
+      
+    // 添加事件监听
+    // 使用 timeDisplay 元素的 MutaionObserver 比 video 元素的 timeupdate 更可靠地触发
+    // 但为了简单起见，暂时仍用 timeupdate, 注意：如果B站更新了时间显示逻辑，可能需要改用 MutationObserver 观察 timeDisplayElement 的内容变化
+    videoElement.addEventListener('timeupdate', this.timeUpdateListener);
+    console.log("【VideoAdGuard】已添加 timeupdate 监听器用于自动跳过");
+  }
+
+  // 新增: 移除自动跳过监听器的方法
+  private static removeAutoSkipListener() {
+    const videoElement = document.querySelector("video");
+    if (videoElement && this.timeUpdateListener) {
+      videoElement.removeEventListener('timeupdate', this.timeUpdateListener);
+      console.log("【VideoAdGuard】已移除旧的 timeupdate 监听器");
+      this.timeUpdateListener = null; // 清理引用
+    }
+  }
+
+  // 新增: 辅助函数，将时间字符串转为秒数
+  private static timeStrToSeconds(timeStr: string): number {
+    const parts = timeStr.split(':').map(Number);
+    let seconds = 0;
+    if (parts.length === 3) { // HH:MM:SS
+      seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) { // MM:SS
+      seconds = parts[0] * 60 + parts[1];
+    } else if (parts.length === 1) { // S
+      seconds = parts[0];
+    }
+    return seconds;
   }
 }
 

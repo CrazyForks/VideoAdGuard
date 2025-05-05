@@ -10,6 +10,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const localOllamaCheckbox = document.getElementById(
     "localOllama"
   ) as HTMLInputElement;
+  const autoSkipAdCheckbox = document.getElementById("autoSkipAd") as HTMLInputElement;
+
   localOllamaCheckbox.addEventListener('change', toggleOllamaField);
   function toggleOllamaField(e: Event) {
     const target = e.target as HTMLInputElement;
@@ -21,7 +23,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     !modelInput ||
     !saveButton ||
     !messageDiv ||
-    !resultDiv
+    !resultDiv ||
+    !autoSkipAdCheckbox
   )
     return;
 
@@ -31,6 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "apiKey",
     "model",
     "enableLocalOllama",
+    "autoSkipAd",
   ]);
   if (settings.apiUrl) {
     apiUrlInput.value = settings.apiUrl;
@@ -47,12 +51,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     (document.getElementsByClassName("apiKey-field")[0] as HTMLElement).style.display = "none";
   }
 
+  // 新增: 加载自动跳过设置
+  if (settings.autoSkipAd) {
+    autoSkipAdCheckbox.checked = settings.autoSkipAd;
+  }
+
   // 保存设置
   saveButton.addEventListener("click", async () => {
     const apiUrl = apiUrlInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
     const model = modelInput.value.trim();
     const enableLocalOllama = localOllamaCheckbox.checked;
+    const autoSkipAd = autoSkipAdCheckbox.checked;
 
     if (!apiUrl) {
       messageDiv.textContent = '请输入API地址';
@@ -73,7 +83,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      await chrome.storage.local.set({ apiUrl, apiKey, model, enableLocalOllama});
+      await chrome.storage.local.set({ apiUrl, apiKey, model, enableLocalOllama, autoSkipAd });
       messageDiv.textContent = '设置已保存';
       messageDiv.className = 'success';
     } catch (error) {
