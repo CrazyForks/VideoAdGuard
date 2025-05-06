@@ -60,7 +60,7 @@
 
     
     .api-settings-card label {
-      flex-basis: 80px; /* 调整标签宽度 */
+      flex-basis: 60px; /* 调整标签宽度 */
       flex-shrink: 0;
       text-align: left; 
       margin-right: 10px;
@@ -172,8 +172,20 @@
     }
 
     
+    /* 确保密码字段隐藏时布局不会错位 */
     body.ollama-enabled .api-settings-card .apiKey-field {
-       display: none;
+      display: none;
+      visibility: hidden;
+      height: 0;
+      margin: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.3s, height 0.3s, margin 0.3s;
+    }
+    
+    /* 当密码字段显示时添加适当的过渡效果 */
+    .api-settings-card .apiKey-field {
+      transition: opacity 0.3s, height 0.3s, margin 0.3s;
     }
     
     /* body.ollama-enabled .api-settings-card .apiUrl-field,
