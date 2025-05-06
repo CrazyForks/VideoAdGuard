@@ -87,8 +87,8 @@ class AdDetector {
       }
 
       if (result.exist) {
-        console.log('【VideoAdGuard】检测到广告片段:', JSON.stringify(result.index_lists));
         const second_lists = this.index2second(result.index_lists, captionsData.body);
+        console.log('【VideoAdGuard】检测到广告片段:', JSON.stringify(second_lists));
         AdDetector.adTimeRanges = second_lists;
         this.adDetectionResult = `发现${second_lists.length}处广告：${
           second_lists.map(([start, end]) => `${this.second2time(start)}~${this.second2time(end)}`).join(' | ')
