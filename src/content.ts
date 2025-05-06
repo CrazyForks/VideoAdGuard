@@ -34,10 +34,6 @@ class AdDetector {
         existingButton.remove();
       }
       
-      // 新增: 获取自动跳过设置
-      const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false }); // 提供默认值 false
-      console.log("【VideoAdGuard】读取自动跳过设置:", autoSkipAd);
-
       // 新增: 在开始分析前移除旧监听器
       this.removeAutoSkipListener();
 
@@ -110,11 +106,8 @@ class AdDetector {
         }`;
         // 注入跳过按钮
         this.injectSkipButton();
-        // 新增: 如果开启了自动跳过，则设置监听器
-        if (autoSkipAd) {
-            console.log("【VideoAdGuard】设置自动跳过监听器");
-            this.setupAutoSkip();
-        }
+        // 设置自动跳过
+        this.setupAutoSkip();
         
         // 添加：创建广告标记
         this.markAdPositions();
@@ -277,21 +270,20 @@ class AdDetector {
   // 新增: 设置自动跳过监听器的方法
   private static setupAutoSkip() {
     const videoElement = document.querySelector("video");
-    // 注意B站更新可能导致选择器失效，这里使用时间显示元素作为触发源更可靠
     const timeDisplayElement = document.querySelector(".bpx-player-ctrl-time-current"); 
 
     if (!videoElement || !timeDisplayElement) {
       console.error("【VideoAdGuard】未找到视频或时间显示元素，无法设置自动跳过");
-      this.removeAutoSkipListener(); // 找不到元素则清理并退出
-      return;
-    }
-    if (!this.adTimeRanges || this.adTimeRanges.length === 0) {
-      console.log("【VideoAdGuard】无广告时间段，无需设置自动跳过");
-      this.removeAutoSkipListener(); // 无广告时间段也清理并退出
+      this.removeAutoSkipListener(); 
       return;
     }
 
-    // 确保移除旧监听器
+    if (!this.adTimeRanges || this.adTimeRanges.length === 0) {
+      console.log("【VideoAdGuard】无广告时间段，无需设置自动跳过");
+      this.removeAutoSkipListener(); 
+      return;
+    }
+
     this.removeAutoSkipListener(); 
 
     // 定义并保存 timeupdate 回调
@@ -307,28 +299,28 @@ class AdDetector {
       }
 
       const currentTimeStr = currentTimeDisplayElement.textContent;
-      if (!currentTimeStr) return; // 如果获取不到时间文本，则跳过此次处理
+      if (!currentTimeStr) return; 
 
-      const currentTime = this.timeStrToSeconds(currentTimeStr);
+      // 检查自动跳过设置是否开启
+      chrome.storage.local.get({ autoSkipAd: false }, (result) => {
+        if (!result.autoSkipAd) {
+          return; // 如果自动跳过未开启,则不执行后续跳过逻辑
+        }
 
-      for (const [start, end] of this.adTimeRanges) {
-         if (currentTime >= start && currentTime < end) { 
+        const currentTime = this.timeStrToSeconds(currentTimeStr);
+
+        for (const [start, end] of this.adTimeRanges) {
+          if (currentTime >= start && currentTime < end) { 
             console.log(`【VideoAdGuard】检测到广告时间 ${this.second2time(start)}~${this.second2time(end)}，当前显示时间 ${currentTimeStr} (${currentTime}s)，准备跳过...`);
-            // 目标时间略微超过广告结束时间，防止误差，并确保不超出视频总长
             const targetTime = Math.min(end + 0.1, currentVideoElement.duration); 
             currentVideoElement.currentTime = targetTime; 
             console.log(`【VideoAdGuard】已自动跳过到 ${this.second2time(targetTime)}`);
-            // 可选: 考虑在跳过后临时移除再添加监听器以避免快速连续触发
-            // this.removeAutoSkipListener();
-            // setTimeout(() => this.setupAutoSkip(), 50);
-            break; // 跳过一个广告段后退出循环
+            break;
           }
-      }
+        }
+      });
     };
       
-    // 添加事件监听
-    // 使用 timeDisplay 元素的 MutaionObserver 比 video 元素的 timeupdate 更可靠地触发
-    // 但为了简单起见，暂时仍用 timeupdate, 注意：如果B站更新了时间显示逻辑，可能需要改用 MutationObserver 观察 timeDisplayElement 的内容变化
     videoElement.addEventListener('timeupdate', this.timeUpdateListener);
     console.log("【VideoAdGuard】已添加 timeupdate 监听器用于自动跳过");
   }
