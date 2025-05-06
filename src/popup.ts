@@ -11,6 +11,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     "localOllama"
   ) as HTMLInputElement;
   const autoSkipAdCheckbox = document.getElementById("autoSkipAd") as HTMLInputElement;
+  const togglePasswordBtn = document.getElementById("toggleApiKey");
+
+  if (togglePasswordBtn && apiKeyInput) {
+    togglePasswordBtn.addEventListener("click", () => {
+      const type = apiKeyInput.getAttribute("type") === "password" ? "text" : "password";
+      apiKeyInput.setAttribute("type", type);
+      
+      // 切换眼睛图标
+      const eyeOpen = togglePasswordBtn.querySelector(".eye-open") as HTMLElement;
+      const eyeClosed = togglePasswordBtn.querySelector(".eye-closed") as HTMLElement;
+      
+      if (type === "text") {
+        // 显示密码时，显示闭眼图标，隐藏睁眼图标
+        eyeOpen.style.display = "none";
+        eyeClosed.style.display = "block";
+      } else {
+        // 隐藏密码时，显示睁眼图标，隐藏闭眼图标
+        eyeOpen.style.display = "block";
+        eyeClosed.style.display = "none";
+      }
+    });
+  }
 
   localOllamaCheckbox.addEventListener('change', toggleOllamaField);
   function toggleOllamaField(e: Event) {
