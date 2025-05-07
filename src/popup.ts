@@ -11,12 +11,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     "localOllama"
   ) as HTMLInputElement;
   const autoSkipAdCheckbox = document.getElementById("autoSkipAd") as HTMLInputElement;
+  const togglePasswordBtn = document.getElementById("toggleApiKey");
+  const apiKeyField = document.getElementsByClassName("apiKey-field")[0] as HTMLElement;
+
+  if (togglePasswordBtn && apiKeyInput) {
+    togglePasswordBtn.addEventListener("click", () => {
+      const type = apiKeyInput.getAttribute("type") === "password" ? "text" : "password";
+      apiKeyInput.setAttribute("type", type);
+      
+      // 切换眼睛图标
+      const eyeOpen = togglePasswordBtn.querySelector(".eye-open") as HTMLElement;
+      const eyeClosed = togglePasswordBtn.querySelector(".eye-closed") as HTMLElement;
+      
+      if (type === "text") {
+        // 显示密码时，显示闭眼图标，隐藏睁眼图标
+        eyeOpen.style.display = "none";
+        eyeClosed.style.display = "block";
+      } else {
+        // 隐藏密码时，显示睁眼图标，隐藏闭眼图标
+        eyeOpen.style.display = "block";
+        eyeClosed.style.display = "none";
+      }
+    });
+  }
 
   localOllamaCheckbox.addEventListener('change', toggleOllamaField);
   function toggleOllamaField(e: Event) {
     const target = e.target as HTMLInputElement;
-    (document.getElementsByClassName("apiKey-field")[0] as HTMLElement).style.display = target.checked? "none": "block";
+    
+    // 使用CSS类来控制显示/隐藏，而不是直接修改display属性
+    if (target.checked) {
+      document.body.classList.add('ollama-enabled');
+    } else {
+      document.body.classList.remove('ollama-enabled');
+    }
   }
+
   if (
     !apiUrlInput ||
     !apiKeyInput ||
@@ -48,7 +78,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (settings.enableLocalOllama) {
     localOllamaCheckbox.checked = settings.enableLocalOllama;
-    (document.getElementsByClassName("apiKey-field")[0] as HTMLElement).style.display = "none";
+    // 使用CSS类而不是直接修改样式
+    document.body.classList.add('ollama-enabled');
   }
 
   // 新增: 加载自动跳过设置
