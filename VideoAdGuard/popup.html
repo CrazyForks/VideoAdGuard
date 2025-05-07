@@ -60,11 +60,32 @@
       width: 20px !important; 
       height: 20px;
       cursor: pointer;
+      position: relative;
+      background-color: white;
+      transition: all 0.2s ease;
+      appearance: none; 
+      border: 2px solid #67AD5B; 
+      border-radius: 4px; 
     }
 
-    
+    .checkbox-card input[type="checkbox"]:checked {
+      background-color: #67AD5B; 
+    }
+
+    .checkbox-card input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: sticky;
+      color: white; 
+      font-size: 16px;
+      font-weight: bold;
+      font-family: system-ui;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
     .api-settings-card label {
-      flex-basis: 60px; /* 调整标签宽度 */
+      flex-basis: 60px; 
       flex-shrink: 0;
       text-align: left; 
       margin-right: 10px;
@@ -72,17 +93,15 @@
       font-weight: normal;
     }
 
-    /* API URL 输入框样式 */
     .apiUrl-field input[type="text"] {
       flex-grow: 1;
       padding: 8px;
       box-sizing: border-box;
       border: 1px solid #ccc;
       border-radius: 4px;
-      width: calc(100% - 90px); /* 减去标签宽度和margin */
+      width: calc(100% - 90px); 
     }
 
-    /* 模型名称输入框样式 */
     .model-field input[type="text"] {
       flex-grow: 1;
       padding: 8px;
