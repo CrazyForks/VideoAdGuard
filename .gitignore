@@ -1,4 +1,5 @@
 node_modules/
+VideoAdGuard/
 
 dist.crx
 dist.pem
