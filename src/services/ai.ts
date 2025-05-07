@@ -1,10 +1,11 @@
 export class AIService {
-  private static async makeRequest(videoInfo: any, config: {
+  private static async makeRequest(videoInfo: any, url: string, model: string,
+    config: {
     headers: Record<string, string>,
     bodyExtra?: Record<string, any>
   }) {
     const messageBody = {
-      model: await this.getModel(),
+      model: model,
       messages: [
         {
           role: "system",
@@ -23,14 +24,14 @@ export class AIService {
     };
 
     const response = await chrome.runtime.sendMessage({
-      url: await this.getApiUrl(),
+      url: url,
       headers: config.headers,
       body: messageBody,
     });
 
     console.log("【VideoAdGuard】API请求已发送");
     if (response.success) {
-      console.log("【VideoAdGuard】收到API响应:", response.data);
+      console.log("【VideoAdGuard】收到大模型响应:", response.data);
       return response.data;
     } else {
       console.error("【VideoAdGuard】请求失败:", response.error);
@@ -44,10 +45,13 @@ export class AIService {
     captions: Record<number, string>;
   }) {
     console.log("【VideoAdGuard】开始分析视频信息:", videoInfo);
+    const url = await this.getApiUrl();
+    const model = await this.getModel();
     const enableLocalOllama = await this.getEnableLocalOllama();
 
     if (enableLocalOllama) {
-      const data = await this.makeRequest(videoInfo, {
+      const data = await this.makeRequest(videoInfo, url, model,
+      {
         headers: {
           "Content-Type": "application/json",
         },
@@ -61,10 +65,8 @@ export class AIService {
       if (!apiKey) {
         throw new Error("未设置API密钥");
       }
-      console.log("【VideoAdGuard】成功获取API密钥");
       
-      const url = await this.getApiUrl();
-      const model = await this.getModel();
+
       const isOpenAI = url.includes("api.openai.com");
       const isAzureOpenAI = url.includes("openai.azure.com");
       const isZhipuAI = url.includes("open.bigmodel.cn");
@@ -78,7 +80,8 @@ export class AIService {
         bodyExtra.response_format = { type: "json_object" };
       }
 
-      const data = await this.makeRequest(videoInfo, {
+      const data = await this.makeRequest(videoInfo, url, model,
+      {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
@@ -109,33 +112,26 @@ export class AIService {
   }
 
   private static async getApiUrl(): Promise<string> {
-    console.log('【VideoAdGuard】正在获取API地址');
     const result = await chrome.storage.local.get('apiUrl');
     console.log('【VideoAdGuard】API地址状态:', result.apiUrl? '已设置' : '未设置');
     return result.apiUrl || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
   }
 
   private static async getApiKey(): Promise<string | null> {
-    console.log('【VideoAdGuard】正在获取API密钥');
     const result = await chrome.storage.local.get('apiKey');
     console.log('【VideoAdGuard】API密钥状态:', result.apiKey ? '已设置' : '未设置');
     return result.apiKey || null;
   }
 
-  private static async getModel(): Promise<string | null> {
-    console.log('【VideoAdGuard】正在获取模型名称');
+  private static async getModel(): Promise<string> {
     const result = await chrome.storage.local.get('model');
     console.log('【VideoAdGuard】模型名称状态:', result.model ? '已设置' : '未设置');
     return result.model || 'glm-4-flash';
   }
 
   private static async getEnableLocalOllama(): Promise<boolean> {
-    console.log("【VideoAdGuard】正在获取本地Ollama设置");
     const result = await chrome.storage.local.get("enableLocalOllama");
-    console.log(
-      "【VideoAdGuard】本地Ollama设置状态:",
-      result.enableLocalOllama ? "已设置" : "未设置"
-    );
+    console.log("【VideoAdGuard】本地Ollama设置状态:", result.enableLocalOllama);
     return result.enableLocalOllama || false;
   }
 }
