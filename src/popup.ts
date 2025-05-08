@@ -16,22 +16,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (togglePasswordBtn && apiKeyInput) {
     togglePasswordBtn.addEventListener("click", () => {
+      // 只需切换输入框类型，图标显示由CSS控制      
       const type = apiKeyInput.getAttribute("type") === "password" ? "text" : "password";
       apiKeyInput.setAttribute("type", type);
-      
-      // 切换眼睛图标
-      const eyeOpen = togglePasswordBtn.querySelector(".eye-open") as HTMLElement;
-      const eyeClosed = togglePasswordBtn.querySelector(".eye-closed") as HTMLElement;
-      
-      if (type === "text") {
-        // 显示密码时，显示闭眼图标，隐藏睁眼图标
-        eyeOpen.style.display = "none";
-        eyeClosed.style.display = "block";
-      } else {
-        // 隐藏密码时，显示睁眼图标，隐藏闭眼图标
-        eyeOpen.style.display = "block";
-        eyeClosed.style.display = "none";
-      }
     });
   }
 
@@ -82,7 +69,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.body.classList.add('ollama-enabled');
   }
 
-  // 新增: 加载自动跳过设置
   if (settings.autoSkipAd) {
     autoSkipAdCheckbox.checked = settings.autoSkipAd;
   }

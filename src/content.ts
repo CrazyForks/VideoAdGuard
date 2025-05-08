@@ -10,9 +10,9 @@ interface AdPosition {
 class AdDetector {
   public static adDetectionResult: string | null = null; // 状态存储
   private static adTimeRanges: number[][] = []; // 存储广告时间段
-  private static timeUpdateListener: (() => void) | null = null; // 新增: 用于存储 timeupdate 监听器的引用
+  private static validIndexLists: number[][] = []; // 存储原始广告索引区间
+  private static timeUpdateListener: (() => void) | null = null; // 用于存储 timeupdate 监听器的引用
   private static adMarkerLayer: HTMLElement | null = null; // 添加标记层引用
-  private static validIndexLists: number[][] = []; // 存储过滤和合并前的有效广告索引区间
 
   private static async getCurrentBvid(): Promise<string> {
     // 先尝试从路径中匹配
@@ -27,16 +27,26 @@ class AdDetector {
     throw new Error('未找到视频ID');
   }
 
+  private static resetState() {
+    // 重置所有静态变量
+    this.adDetectionResult = null;
+    this.adTimeRanges = [];
+    this.validIndexLists = [];
+    
+    // 清理DOM元素
+    document.querySelectorAll('.skip-ad-button10032').forEach(el => el.remove());
+
+    // 清理标记层
+    this.removeAdMarkers();
+    
+    // 移除事件监听器
+    this.removeAutoSkipListener();
+  }
+
   public static async analyze() {
     try {
-      // 移除已存在的跳过按钮
-      const existingButton = document.querySelector('.skip-ad-button10032');
-      if (existingButton) {
-        existingButton.remove();
-      }
-      
-      // 新增: 在开始分析前移除旧监听器
-      this.removeAutoSkipListener();
+      // 在分析开始时先重置状态
+      this.resetState();
 
       const bvid = await this.getCurrentBvid();
       
@@ -154,6 +164,8 @@ class AdDetector {
         
         // 注入跳过按钮
         this.injectSkipButton(videoElement);
+        // 创建并显示广告标记层
+        this.markAdPositions(videoElement);
 
         const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
 
@@ -162,10 +174,7 @@ class AdDetector {
             console.log("【VideoAdGuard】设置自动跳过监听器");
             this.setupAutoSkip(videoElement);
         }
-
-        // 创建并显示广告标记层
-        this.markAdPositions(videoElement);
-
+        
       } else {
         console.log('【VideoAdGuard】无广告内容');
         this.adDetectionResult = '无广告内容';
@@ -317,33 +326,39 @@ class AdDetector {
     
     // 用于记录已经跳过的广告区间
     const skippedRanges = new Set<string>();
+    let lastCheckTime = 0
     
     // 定义并保存 timeupdate 回调
     this.timeUpdateListener = () => {
-      const currentTime = videoElement.currentTime;
-      
-      for (const [start, end] of this.adTimeRanges) {
-        // 生成当前区间的唯一标识
-        const rangeKey = `${start}-${end}`;
+      // 添加节流，每秒最多执行一次
+      const now = Date.now();
+      if (now - lastCheckTime >= 1000) {
+        lastCheckTime = now;
+        const currentTime = videoElement.currentTime;
         
-        // 如果当前时间在广告区间内，且该区间还未被跳过
-        if (currentTime >= start && currentTime < end && !skippedRanges.has(rangeKey)) { 
-            console.log(`【VideoAdGuard】检测到广告时间 ${this.second2time(start)}~${this.second2time(end)}，当前时间 (${currentTime}s)，准备跳过...`);
-            // 目标时间略微超过广告结束时间，防止误差，并确保不超出视频总长
-            const targetTime = Math.min(end + 0.1, videoElement.duration); 
-            videoElement.currentTime = targetTime; 
-            console.log(`【VideoAdGuard】已自动跳过到 ${this.second2time(targetTime)}`);
-            
-            // 将当前区间标记为已跳过
-            skippedRanges.add(rangeKey);
-            
-            // 检查是否所有区间都已经跳过
-            const allSkipped = this.adTimeRanges.every(([s, e]) => skippedRanges.has(`${s}-${e}`));
-            if (allSkipped) {
-                console.log('【VideoAdGuard】所有广告区间都已跳过，移除监听器');
-                this.removeAutoSkipListener();
-            }
-            break;
+        for (const [start, end] of this.adTimeRanges) {
+          // 生成当前区间的唯一标识
+          const rangeKey = `${start}-${end}`;
+          
+          // 如果当前时间在广告区间内，且该区间还未被跳过
+          if (currentTime >= start && currentTime < end && !skippedRanges.has(rangeKey)) { 
+              console.log(`【VideoAdGuard】检测到广告时间 ${this.second2time(start)}~${this.second2time(end)}，当前时间 (${currentTime}s)，准备跳过...`);
+              // 目标时间略微超过广告结束时间，防止误差，并确保不超出视频总长
+              const targetTime = Math.min(end + 0.1, videoElement.duration); 
+              videoElement.currentTime = targetTime; 
+              console.log(`【VideoAdGuard】已自动跳过到 ${this.second2time(targetTime)}`);
+              
+              // 将当前区间标记为已跳过
+              skippedRanges.add(rangeKey);
+              
+              // 检查是否所有区间都已经跳过
+              const allSkipped = this.adTimeRanges.every(([s, e]) => skippedRanges.has(`${s}-${e}`));
+              if (allSkipped) {
+                  console.log('【VideoAdGuard】所有广告区间都已跳过，移除监听器');
+                  this.removeAutoSkipListener();
+              }
+              break;
+          }
         }
       }
     };
