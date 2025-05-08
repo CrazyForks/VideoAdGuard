@@ -120,10 +120,8 @@ class AdDetector {
 
             // 如果当前区间的开始 <= 上一个合并区间的结束+1 (允许相邻，如 [1,2], [3,4])
             if (currentStart <= lastMergedEnd + 1) {
-              // 合并区间，更新上一个合并区间的结束索引为两者中的较大值
               lastMerged[1] = Math.max(lastMergedEnd, currentEnd);
             } else {
-              // 不满足合并条件，直接添加新区间
               mergedIndexLists.push([...sortedLists[i]]);
             }
           }
@@ -146,13 +144,12 @@ class AdDetector {
         // 计算总广告时长
         let totalAdDuration = 0;
         if (this.adTimeRanges && this.adTimeRanges.length > 0) {
-            //累加所有广告时间段的长度
             totalAdDuration = this.adTimeRanges.reduce((sum, [start, end]) => sum + (end - start), 0);
         }
 
         const isDetectionConfident =                                     
             this.adTimeRanges.length > 0 &&                     // 1. 确实检测到了广告时间段
-            this.validIndexLists.length <= 3 &&                 // 2. 原始广告片段数量（合并前，过滤后）不多于3个 (修正并保留用户之前的逻辑)              // 3. 成功获取到视频元素和有效的视频总时长
+            this.validIndexLists.length <= 3 &&                 // 2. 原始广告片段数量不多于3个
             totalAdDuration < (videoDuration * 0.5);            // 3. 总广告时长小于视频总时长的50%
         
         // 注入跳过按钮
@@ -160,35 +157,30 @@ class AdDetector {
 
         const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
 
-        // 新增: 如果开启了自动跳过，则设置监听器
+        // 如果开启了自动跳过，则设置监听器
         if (autoSkipAd && isDetectionConfident ) {
             console.log("【VideoAdGuard】设置自动跳过监听器");
             this.setupAutoSkip(videoElement);
         }
-        this.markAdPositions();
+
+        // 创建并显示广告标记层
+        this.markAdPositions(videoElement);
+
       } else {
         console.log('【VideoAdGuard】无广告内容');
         this.adDetectionResult = '无广告内容';
-        // 新增: 无广告也移除监听器
         this.removeAutoSkipListener();
       }
 
     } catch (error) {
       console.error('【VideoAdGuard】分析失败:', error);
       this.adDetectionResult = '分析失败：' + (error as Error).message;
-      // 新增: 出错时也移除监听器
       this.removeAutoSkipListener();
     }
   }
 
-  // 添加：创建广告标记层的方法
-  private static markAdPositions(): void {
-    // 检查是否已有视频元素
-    const videoElement = document.querySelector('video');
-    if (!videoElement) {
-      console.log('【VideoAdGuard】未找到视频元素，无法创建广告标记');
-      return;
-    }
+  // 创建广告标记层的方法
+  private static markAdPositions(videoElement: HTMLVideoElement): void {
 
     // 清除已有标记层
     this.removeAdMarkers();
@@ -308,7 +300,7 @@ class AdDetector {
       const currentTime = videoElement.currentTime;
       console.log('【VideoAdGuard】当前时间:', currentTime);
       const adSegment = this.adTimeRanges.find(([start, end]) => 
-        currentTime >= Math.min(start-10,0) && currentTime < end
+        currentTime >= Math.max(start-10,0) && currentTime < end
       );
 
       if (adSegment) {
