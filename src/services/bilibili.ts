@@ -26,7 +26,7 @@ export class BilibiliService {
     console.log('【VideoAdGuard】[BilibiliService] Getting video info for bvid:', bvid);
     const data = await this.fetchWithCookie(
       'https://api.bilibili.com/x/web-interface/view',
-      { bvid }
+      { bvid: bvid }
     );
     console.log('【VideoAdGuard】[BilibiliService] Video info result:', data);
     return data;
@@ -44,7 +44,7 @@ export class BilibiliService {
 
   public static async getPlayerInfo(bvid: string, cid: number) {
     console.log('【VideoAdGuard】[BilibiliService] Getting player info for bvid:', bvid, 'cid:', cid);
-    const params = { bvid, cid };
+    const params = { bvid: bvid, cid: cid};
     const signedParams = await WbiUtils.encWbi(params);
     const data = await this.fetchWithCookie(
       'https://api.bilibili.com/x/player/wbi/v2',
@@ -69,9 +69,11 @@ export class BilibiliService {
    */
   public static async getUpInfo(uid: string) {
     console.log('【VideoAdGuard】[BilibiliService] Getting UP info for uid:', uid);
+    const params = { mid: uid };
+    const signedParams = await WbiUtils.encWbi(params);
     const data = await this.fetchWithCookie(
-      'https://api.bilibili.com/x/space/acc/info',
-      { mid: uid }
+      'https://api.bilibili.com/x/space/wbi/acc/info',
+      signedParams
     );
     console.log('【VideoAdGuard】[BilibiliService] UP info result:', data);
     return {

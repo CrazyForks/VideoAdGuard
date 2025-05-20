@@ -1,6 +1,6 @@
 export {};
-import { WhitelistService } from './services/whitelist';  // 添加这行导入
-import { BilibiliService } from './services/bilibili';    // 添加这行导入，因为后面用到了BilibiliService
+import { WhitelistService } from './services/whitelist';  
+import { BilibiliService } from './services/bilibili';    
 
 document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlInput = document.getElementById("apiUrl") as HTMLInputElement;
