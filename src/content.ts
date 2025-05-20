@@ -1,5 +1,6 @@
 import { BilibiliService } from './services/bilibili';
 import { AIService } from './services/ai';
+import { WhitelistService } from './services/whitelist';  // 添加这行导入
 
 // 添加广告标记位置的接口定义
 interface AdPosition {
@@ -52,6 +53,15 @@ class AdDetector {
       
       // 获取视频信息
       const videoInfo = await BilibiliService.getVideoInfo(bvid);
+
+      // 检查UP主是否在白名单中
+      const isUPWhitelisted = await WhitelistService.isWhitelisted(videoInfo.owner.mid.toString());
+      if (isUPWhitelisted) {
+        console.log('【VideoAdGuard】当前UP主在白名单中，跳过广告检测');
+        this.adDetectionResult = 'UP主在白名单中，跳过检测';
+        return;
+      }
+
       const comments = await BilibiliService.getComments(bvid);
       const playerInfo = await BilibiliService.getPlayerInfo(bvid, videoInfo.cid);
 

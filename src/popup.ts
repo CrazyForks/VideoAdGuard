@@ -1,4 +1,6 @@
 export {};
+import { WhitelistService } from './services/whitelist';  // 添加这行导入
+import { BilibiliService } from './services/bilibili';    // 添加这行导入，因为后面用到了BilibiliService
 
 document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlInput = document.getElementById("apiUrl") as HTMLInputElement;
@@ -134,5 +136,80 @@ document.addEventListener("DOMContentLoaded", async () => {
         resultDiv.textContent = '未检测到广告信息';
       }
     });
+  });
+
+  const enableWhitelistCheckbox = document.getElementById("enableWhitelist") as HTMLInputElement;
+  const upUidInput = document.getElementById("upUid") as HTMLInputElement;
+  const addToWhitelistButton = document.getElementById("addToWhitelist") as HTMLButtonElement;
+  const whitelistList = document.querySelector(".whitelist-list") as HTMLDivElement;
+
+  // 加载白名单配置
+  const whitelistConfig = await WhitelistService.getConfig();
+  enableWhitelistCheckbox.checked = whitelistConfig.enabled;
+  document.body.classList.toggle('whitelist-enabled', whitelistConfig.enabled);
+
+  // 渲染白名单列表
+  function renderWhitelistItems() {
+    whitelistList.innerHTML = whitelistConfig.whitelistedUPs.map(up => `
+      <div class="whitelist-item">
+        <span>${up.name} (UID: ${up.uid})</span>
+        <button data-uid="${up.uid}">移除</button>
+      </div>
+    `).join('');
+  }
+  renderWhitelistItems();
+
+  // 启用/禁用白名单
+  enableWhitelistCheckbox.addEventListener('change', async () => {
+    await WhitelistService.setEnabled(enableWhitelistCheckbox.checked);
+    document.body.classList.toggle('whitelist-enabled', enableWhitelistCheckbox.checked);
+  });
+
+  // 添加UP主到白名单
+  addToWhitelistButton.addEventListener('click', async () => {
+    const uid = upUidInput.value.trim();
+    if (!uid) {
+      messageDiv.textContent = '请输入UP主UID';
+      messageDiv.className = 'error';
+      return;
+    }
+
+    try {
+      // 获取UP主信息
+      const upInfo = await BilibiliService.getUpInfo(uid);
+      const added = await WhitelistService.addToWhitelist({
+        uid: uid,
+        name: upInfo.name
+      });
+
+      if (added) {
+        messageDiv.textContent = '已添加到白名单';
+        messageDiv.className = 'success';
+        upUidInput.value = '';
+        whitelistConfig.whitelistedUPs = (await WhitelistService.getConfig()).whitelistedUPs;
+        renderWhitelistItems();
+      } else {
+        messageDiv.textContent = '该UP主已在白名单中';
+        messageDiv.className = 'error';
+      }
+    } catch (error) {
+      messageDiv.textContent = '添加失败：' + (error as Error).message;
+      messageDiv.className = 'error';
+    }
+  });
+
+  // 移除白名单中的UP主
+  whitelistList.addEventListener('click', async (e) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'BUTTON') {
+      const uid = target.dataset.uid;
+      if (uid) {
+        await WhitelistService.removeFromWhitelist(uid);
+        whitelistConfig.whitelistedUPs = (await WhitelistService.getConfig()).whitelistedUPs;
+        renderWhitelistItems();
+        messageDiv.textContent = '已从白名单移除';
+        messageDiv.className = 'success';
+      }
+    }
   });
 });

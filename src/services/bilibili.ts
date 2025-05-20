@@ -61,4 +61,22 @@ export class BilibiliService {
     console.log('【VideoAdGuard】[BilibiliService] Captions result:', data);
     return data;
   }
+
+  /**
+   * 获取UP主信息
+   * @param uid UP主的UID
+   * @returns UP主信息，包含uid和name
+   */
+  public static async getUpInfo(uid: string) {
+    console.log('【VideoAdGuard】[BilibiliService] Getting UP info for uid:', uid);
+    const data = await this.fetchWithCookie(
+      'https://api.bilibili.com/x/space/acc/info',
+      { mid: uid }
+    );
+    console.log('【VideoAdGuard】[BilibiliService] UP info result:', data);
+    return {
+      uid: data.mid.toString(),
+      name: data.name
+    };
+  }
 }

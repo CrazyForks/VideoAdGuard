@@ -277,4 +277,77 @@
 
   <script src="popup.js"></script>
 </body>
+
+<div class="card whitelist-card">
+  <div class="form-group whitelist-switch">
+    <label for="enableWhitelist">启用UP主白名单</label>
+    <input type="checkbox" id="enableWhitelist">
+  </div>
+  <div class="whitelist-content">
+    <div class="whitelist-add">
+      <input type="text" id="upUid" placeholder="输入UP主UID">
+      <button id="addToWhitelist">添加</button>
+    </div>
+    <div class="whitelist-list">
+      <!-- 白名单列表将通过JS动态添加 -->
+    </div>
+  </div>
+
+  <style>
+    .whitelist-card {
+      margin-top: 15px;
+    }
+    
+    .whitelist-content {
+      margin-top: 10px;
+      display: none;
+    }
+    
+    body.whitelist-enabled .whitelist-content {
+      display: block;
+    }
+    
+    .whitelist-add {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .whitelist-add input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    
+    .whitelist-add button {
+      margin: 0;
+      padding: 8px 16px;
+    }
+    
+    .whitelist-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .whitelist-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .whitelist-item:last-child {
+      border-bottom: none;
+    }
+    
+    .whitelist-item button {
+      padding: 4px 8px;
+      margin: 0;
+      background-color: #dc3545;
+      font-size: 12px;
+    }
+  </style>
+</body>
 </html>
