@@ -98,15 +98,15 @@ export class AIService {
     captions: Record<number, string>;
   }): string {
     const prompt = `视频的标题和置顶评论如下，可供参考判断是否有植入广告。如果置顶评论中有购买链接，则肯定有广告，同时可以根据置顶评论的内容判断视频中的广告商从而确定哪部分是广告。
-视频标题：${videoInfo.title}
-置顶评论：${videoInfo.topComment || '无'}
-下面我会给你这个视频的字幕字典，形式为 index: context. 请你完整地找出其中的植入广告，返回json格式的数据。注意要返回一整段的广告，从广告的引入到结尾重新转折回到视频内容前，因此不要返回太短的广告，可以组合成一整段返回。
-字幕内容：${JSON.stringify(videoInfo.captions)}
-示例输出：
-{
-  "exist": <bool. true表示存在植入广告，false表示不存在植入广告>,
-  "index_lists": <list[list[int]]. 二维数组，行数表示广告的段数，不要返回过多段，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。>
-}`;
+    视频标题：${videoInfo.title}
+    置顶评论：${videoInfo.topComment || '无'}
+    下面我会给你这个视频的字幕字典，形式为 index: context. 请你完整地找出其中的植入广告，返回json格式的数据。注意要返回一整段的广告，从广告的引入到结尾重新转折回到视频内容前，因此不要返回太短的广告，可以组合成一整段返回。
+    字幕内容：${JSON.stringify(videoInfo.captions)}
+    示例输出：
+    {
+      "exist": <bool. true表示存在植入广告，false表示不存在植入广告>,
+      "index_lists": <list[list[int]]. 二维数组，行数表示广告的段数，不要返回过多段，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。>
+    }`;
     console.log('【VideoAdGuard】构建提示词成功:', prompt);
     return prompt;
   }

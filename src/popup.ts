@@ -6,15 +6,55 @@ document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlInput = document.getElementById("apiUrl") as HTMLInputElement;
   const apiKeyInput = document.getElementById("apiKey") as HTMLInputElement;
   const modelInput = document.getElementById("model") as HTMLInputElement;
-  const saveButton = document.getElementById("save") as HTMLButtonElement;
-  const messageDiv = document.getElementById("message");
-  const resultDiv = document.getElementById("result");
-  const localOllamaCheckbox = document.getElementById(
-    "localOllama"
-  ) as HTMLInputElement;
+  const messageDiv = document.getElementById("message") as HTMLInputElement;
+  const resultDiv = document.getElementById("result") as HTMLInputElement;
+  const enableExtensionCheckbox = document.getElementById("enableExtension") as HTMLInputElement;
+  const localOllamaCheckbox = document.getElementById("localOllama") as HTMLInputElement;
   const autoSkipAdCheckbox = document.getElementById("autoSkipAd") as HTMLInputElement;
-  const togglePasswordBtn = document.getElementById("toggleApiKey");
-  const apiKeyField = document.getElementsByClassName("apiKey-field")[0] as HTMLElement;
+  const togglePasswordBtn = document.getElementById("toggleApiKey") as HTMLInputElement;
+
+  // 自动保存函数
+  async function autoSaveSettings() {
+    const apiUrl = apiUrlInput.value.trim();
+    const apiKey = apiKeyInput.value.trim();
+    const model = modelInput.value.trim();
+    const enableExtension = enableExtensionCheckbox.checked;
+    const enableLocalOllama = localOllamaCheckbox.checked;
+    const autoSkipAd = autoSkipAdCheckbox.checked;
+
+    // 基本验证
+    if (!apiUrl) {
+      console.warn('API地址为空');
+      return;
+    }
+
+    if (!enableLocalOllama && !apiKey) {
+      console.warn('API密钥为空');
+      return;
+    }
+
+    if (!model) {
+      console.warn('模型名称为空');
+      return;
+    }
+
+    try {
+      await chrome.storage.local.set({ apiUrl, apiKey, model, enableExtension, enableLocalOllama, autoSkipAd });
+    } catch (error) {
+      console.error('保存设置失败:', error);
+    }
+  }
+
+  // 页面卸载时自动保存
+  window.addEventListener('beforeunload', autoSaveSettings);
+  
+  // 页面隐藏时自动保存（用户切换标签页或关闭popup）
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      autoSaveSettings();
+    }
+  });
+
 
   if (togglePasswordBtn && apiKeyInput) {
     togglePasswordBtn.addEventListener("click", () => {
@@ -36,25 +76,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  if (
-    !apiUrlInput ||
-    !apiKeyInput ||
-    !modelInput ||
-    !saveButton ||
-    !messageDiv ||
-    !resultDiv ||
-    !autoSkipAdCheckbox
-  )
-    return;
-
   // 加载已保存的设置
   const settings = await chrome.storage.local.get([
     "apiUrl",
     "apiKey",
     "model",
+    "enableExtension",
     "enableLocalOllama",
     "autoSkipAd",
   ]);
+
   if (settings.apiUrl) {
     apiUrlInput.value = settings.apiUrl;
   }
@@ -64,79 +95,47 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (settings.model) {
     modelInput.value = settings.model;
   }
-
+  if (settings.enableExtension) {
+    enableExtensionCheckbox.checked = settings.enableExtension;
+  }
   if (settings.enableLocalOllama) {
     localOllamaCheckbox.checked = settings.enableLocalOllama;
     // 使用CSS类而不是直接修改样式
     document.body.classList.add('ollama-enabled');
   }
-
   if (settings.autoSkipAd) {
     autoSkipAdCheckbox.checked = settings.autoSkipAd;
   }
 
-  // 保存设置
-  saveButton.addEventListener("click", async () => {
-    const apiUrl = apiUrlInput.value.trim();
-    const apiKey = apiKeyInput.value.trim();
-    const model = modelInput.value.trim();
-    const enableLocalOllama = localOllamaCheckbox.checked;
-    const autoSkipAd = autoSkipAdCheckbox.checked;
 
-    if (!apiUrl) {
-      messageDiv.textContent = '请输入API地址';
-      messageDiv.className = 'error';
-      return;
-    }
 
-    if (!enableLocalOllama && !apiKey) {
-      messageDiv.textContent = '请输入API密钥';
-      messageDiv.className = 'error';
-      return;
-    }
+  if (localOllamaCheckbox.checked){
+    // 获取当前标签页的广告检测结果
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const currentTab = tabs[0];
+      if (!currentTab || !currentTab.id) return;
 
-    if (!model) {
-      messageDiv.textContent = '请输入模型名称';
-      messageDiv.className = 'error';
-      return;
-    }
-
-    try {
-      await chrome.storage.local.set({ apiUrl, apiKey, model, enableLocalOllama, autoSkipAd });
-      messageDiv.textContent = '设置已保存';
-      messageDiv.className = 'success';
-    } catch (error) {
-      messageDiv.textContent = '保存设置失败';
-      messageDiv.className = 'error';
-      console.error('保存设置失败:', error);
-    }
-  });
-
-  // 获取当前标签页的广告检测结果
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const currentTab = tabs[0];
-    if (!currentTab || !currentTab.id) return;
-
-    // 检查是否在B站视频页面
-    if (!currentTab.url?.includes('bilibili.com/video/') && 
-    !currentTab.url?.includes('bilibili.com/list/watchlater')) {
-      resultDiv.textContent = '当前不在哔哩哔哩视频页面';
-      return;
-    }
-
-    chrome.tabs.sendMessage(currentTab.id, { type: 'GET_AD_INFO' }, (response) => {
-      if (chrome.runtime.lastError) {
-        resultDiv.textContent = '插件未完全加载，请等待或刷新';
+      // 检查是否在B站视频页面
+      if (!currentTab.url?.includes('bilibili.com/video/') && 
+      !currentTab.url?.includes('bilibili.com/list/watchlater')) {
+        resultDiv.textContent = '当前不在哔哩哔哩视频页面';
         return;
       }
 
-      if (response && response.adInfo) {
-        resultDiv.textContent = `${response.adInfo}`;
-      } else {
-        resultDiv.textContent = '未检测到广告信息';
-      }
+      chrome.tabs.sendMessage(currentTab.id, { type: 'GET_AD_INFO' }, (response) => {
+        if (chrome.runtime.lastError) {
+          resultDiv.textContent = '插件未完全加载，请等待或刷新';
+          return;
+        }
+
+        if (response && response.adInfo) {
+          resultDiv.textContent = `${response.adInfo}`;
+        } else {
+          resultDiv.textContent = '未检测到广告信息';
+        }
+      });
     });
-  });
+  }
 
   const enableWhitelistCheckbox = document.getElementById("enableWhitelist") as HTMLInputElement;
   const upUidInput = document.getElementById("upUid") as HTMLInputElement;
@@ -171,6 +170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!uid) {
       messageDiv.textContent = '请输入UP主UID';
       messageDiv.className = 'error';
+      messageDiv.style.display = 'block';
       return;
     }
 
@@ -185,16 +185,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (added) {
         messageDiv.textContent = '已添加到白名单';
         messageDiv.className = 'success';
+        messageDiv.style.display = 'block';
         upUidInput.value = '';
         whitelistConfig.whitelistedUPs = (await WhitelistService.getConfig()).whitelistedUPs;
         renderWhitelistItems();
       } else {
         messageDiv.textContent = '该UP主已在白名单中';
         messageDiv.className = 'error';
+        messageDiv.style.display = 'block';
       }
     } catch (error) {
       messageDiv.textContent = '添加失败：' + (error as Error).message;
       messageDiv.className = 'error';
+      messageDiv.style.display = 'block';
     }
   });
 
@@ -209,6 +212,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderWhitelistItems();
         messageDiv.textContent = '已从白名单移除';
         messageDiv.className = 'success';
+        messageDiv.style.display = 'block';
       }
     }
   });

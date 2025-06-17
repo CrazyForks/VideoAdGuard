@@ -1,12 +1,6 @@
 import { BilibiliService } from './services/bilibili';
 import { AIService } from './services/ai';
-import { WhitelistService } from './services/whitelist';  // 添加这行导入
-
-// 添加广告标记位置的接口定义
-interface AdPosition {
-  startPercent: number;
-  endPercent: number;
-}
+import { WhitelistService } from './services/whitelist'; 
 
 class AdDetector {
   public static adDetectionResult: string | null = null; // 状态存储
@@ -119,10 +113,10 @@ class AdDetector {
       }
 
       if (result.exist) {
-        // 新增: 过滤掉不合法的索引区间 (end < start)
+        // 过滤掉不合法的索引区间 (end < start)
         this.validIndexLists = result.index_lists.filter((item: number[]) => item[1] >= item[0]);
 
-        // 新增: 合并相交、相邻或间隔为1的广告索引区间
+        // 合并相交、相邻或间隔为1的广告索引区间
         let mergedIndexLists: number[][] = [];
         if (this.validIndexLists.length > 0) { // 使用过滤后的列表
           // 1. 按起始索引排序

@@ -2,20 +2,110 @@
 <html>
 <head>
   <meta charset="UTF-8">
+</head>
+<body>
+  <h3>B站广告检测设置</h3>
+
+  <div class="card checkbox-card">
+    <div class="form-group enable-extensions-field">
+      <label for="enableExtension">启用插件</label>
+      <input type="checkbox" id="enableExtension">
+    </div>
+    <div class="form-group autoSkipAd-field">
+      <label for="autoSkipAd">自动跳过广告</label>
+      <input type="checkbox" id="autoSkipAd">
+    </div>
+    <div class="form-group localOllama-field">
+      <label for="localOllama">连接本地 Ollama</label>
+      <input type="checkbox" id="localOllama">
+    </div>
+  </div>
+
+  <div class="card api-settings-card">
+    <div class="form-group apiUrl-field">
+      <label for="apiUrl">API 地址:</label>
+      <input type="text" id="apiUrl" placeholder="请输入API地址" value="https://open.bigmodel.cn/api/paas/v4/chat/completions">
+    </div>
+    <div class="form-group apiKey-field">
+      <label for="apiKey">API 密钥:</label>
+      <div class="input-with-icon">
+        <input type="password" id="apiKey" placeholder="请输入API密钥">
+        <span class="toggle-password" id="toggleApiKey">
+          <svg class="eye-icon eye-open" viewBox="0 0 24 24" width="16" height="16">
+            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path>
+          </svg>
+          <svg class="eye-icon eye-closed" viewBox="0 0 24 24" width="16" height="16">
+            <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"></path>
+          </svg>
+        </span>
+      </div>
+    </div>
+    <div class="form-group model-field">
+      <label for="model">模型名称:</label>
+      <input type="text" id="model" placeholder="请输入模型名称" value="glm-4-flash">
+    </div>
+  </div>
+
+  <div id="result"></div>
+  <div id="message"></div>
+
+  <script src="popup.js"></script>
+</body>
+
+<div class="card whitelist-card">
+  <div class="form-group whitelist-switch">
+    <label for="enableWhitelist">启用UP主白名单</label>
+    <input type="checkbox" id="enableWhitelist">
+  </div>
+  <div class="whitelist-content">
+    <div class="whitelist-add">
+      <input type="text" id="upUid" placeholder="输入UP主UID">
+      <button id="addToWhitelist">添加</button>
+    </div>
+    <div class="whitelist-list">
+      <!-- 白名单列表将通过JS动态添加 -->
+    </div>
+  </div>
+
   <style>
     body {
       width: 320px;
-      padding: 10px;
+      padding: 5px;
       font-family: sans-serif;
       font-size: 14px;
-      background-color: #f4f4f4; 
+      background-color: #f4f4f4;
+      overflow: auto;
     }
+
+    /* 添加自定义滚动条样式 */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f7f9fc;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #fff, #ff6699b5); /* 使用粉色主题色 */
+      border-radius: 2px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #E84B85, #ff6699); /* 使用粉色主题色 */
+    }
+
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+
 
     .card {
       background-color: white;
       border-radius: 8px; 
-      padding: 12px;
-      margin-bottom: 15px;
+      padding: 10px;
+      margin-bottom: 10px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
     }
 
@@ -42,7 +132,7 @@
       margin-bottom: 0; 
     }
     .checkbox-card .form-group:last-child {
-      border-bottom: none; 
+      border-bottom: 0; 
     }
 
     .checkbox-card label {
@@ -54,7 +144,7 @@
       order: 1; 
     }
 
-    .checkbox-card input[type="checkbox"] {
+    input[type="checkbox"] {
       order: 2; 
       margin-left: auto; 
       width: 20px !important; 
@@ -64,15 +154,12 @@
       background-color: white;
       transition: all 0.2s ease;
       appearance: none; 
-      border: 2px solid #67AD5B; 
+      border: 2px solid #ff6699; 
       border-radius: 4px; 
     }
 
-    .checkbox-card input[type="checkbox"]:checked {
-      background-color: #67AD5B; 
-    }
-
-    .checkbox-card input[type="checkbox"]:checked::after {
+    input[type="checkbox"]:checked::after {
+      background-color: #ff6699; 
       content: '✓';
       position: absolute;  
       display: flex;     
@@ -178,24 +265,25 @@
     button {
       width: 100%;
       padding: 10px;
-      background-color: #4CAF50;
+      background-color: #ff6699;
       color: white;
       border: none;
       border-radius: 6px; 
       cursor: pointer;
       font-size: 15px;
-      margin-top: 10px; 
+      margin-top: 3px; 
     }
     button:hover {
-      background-color: #45a049;
+      background-color: #E84B85;
     }
 
     #message {
-      /* margin-top: 12px; */
       padding: 8px;
       border-radius: 4px;
       font-size: 13px;
+      margin-top: 5px;
       text-align: center; 
+      display: none;
     }
     .success {
       background-color: #d4edda;
@@ -208,7 +296,6 @@
       border: 1px solid #f5c6cb;
     }
 
-    
     /* 确保密码字段隐藏时布局不会错位 */
     body.ollama-enabled .api-settings-card .apiKey-field {
       display: none;
@@ -225,72 +312,8 @@
       transition: opacity 0.3s, height 0.3s, margin 0.3s;
     }
 
-  </style>
-</head>
-<body>
-  <h3>B站广告检测设置</h3>
-
-  <div class="card checkbox-card">
-    <div class="form-group autoSkipAd-field">
-      <label for="autoSkipAd">自动跳过广告</label>
-      <input type="checkbox" id="autoSkipAd">
-    </div>
-    <div class="form-group localOllama-field">
-      <label for="localOllama">连接本地 Ollama</label>
-      <input type="checkbox" id="localOllama">
-    </div>
-  </div>
-
-  <div class="card api-settings-card">
-    <div class="form-group apiUrl-field">
-      <label for="apiUrl">API 地址:</label>
-      <input type="text" id="apiUrl" placeholder="请输入API地址" value="https://open.bigmodel.cn/api/paas/v4/chat/completions">
-    </div>
-    <div class="form-group apiKey-field">
-      <label for="apiKey">API 密钥:</label>
-      <div class="input-with-icon">
-        <input type="password" id="apiKey" placeholder="请输入API密钥">
-        <span class="toggle-password" id="toggleApiKey">
-          <svg class="eye-icon eye-open" viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path>
-          </svg>
-          <svg class="eye-icon eye-closed" viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"></path>
-          </svg>
-        </span>
-      </div>
-    </div>
-    <div class="form-group model-field">
-      <label for="model">模型名称:</label>
-      <input type="text" id="model" placeholder="请输入模型名称" value="glm-4-flash">
-    </div>
-  </div>
-
-  <button id="save">保存设置</button>
-  <div id="message"></div>
-  <div id="result"></div>
-
-  <script src="popup.js"></script>
-</body>
-
-<div class="card whitelist-card">
-  <div class="form-group whitelist-switch">
-    <label for="enableWhitelist">启用UP主白名单</label>
-    <input type="checkbox" id="enableWhitelist">
-  </div>
-  <div class="whitelist-content">
-    <div class="whitelist-add">
-      <input type="text" id="upUid" placeholder="输入UP主UID">
-      <button id="addToWhitelist">添加</button>
-    </div>
-    <div class="whitelist-list">
-      <!-- 白名单列表将通过JS动态添加 -->
-    </div>
-  </div>
-
-  <style>
     .whitelist-card {
-      margin-top: 15px;
+      margin-top: 10px;
     }
     
     .whitelist-content {
@@ -317,12 +340,12 @@
     
     .whitelist-add button {
       margin: 0;
-      padding: 8px 16px;
+      padding: 8px 8px;
     }
     
     .whitelist-list {
       max-height: 200px;
-      overflow-y: auto;
+      overflow: auto;
     }
     
     .whitelist-item {
@@ -334,13 +357,13 @@
     }
     
     .whitelist-item:last-child {
-      border-bottom: none;
+      border-bottom: 0;
     }
     
     .whitelist-item button {
       padding: 2px 2px;
       margin: 0;
-      background-color: #dc3545;
+      background-color: #e72236;
       font-size: 12px;
       width: 40px; 
       height: 24px;
