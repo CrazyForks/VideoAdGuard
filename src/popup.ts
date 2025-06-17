@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (settings.model) {
     modelInput.value = settings.model;
   }
-  if (settings.enableExtension) {
+    if (settings.enableExtension) {
     enableExtensionCheckbox.checked = settings.enableExtension;
   }
   if (settings.enableLocalOllama) {
@@ -107,35 +107,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     autoSkipAdCheckbox.checked = settings.autoSkipAd;
   }
 
+  // 获取当前标签页的广告检测结果
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const currentTab = tabs[0];
+    if (!currentTab || !currentTab.id) return;
 
+    // 检查是否在B站视频页面
+    if (!currentTab.url?.includes('bilibili.com/video/') && 
+    !currentTab.url?.includes('bilibili.com/list/watchlater')) {
+      resultDiv.textContent = '当前不在哔哩哔哩视频页面';
+      return;
+    }
 
-  if (localOllamaCheckbox.checked){
-    // 获取当前标签页的广告检测结果
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const currentTab = tabs[0];
-      if (!currentTab || !currentTab.id) return;
-
-      // 检查是否在B站视频页面
-      if (!currentTab.url?.includes('bilibili.com/video/') && 
-      !currentTab.url?.includes('bilibili.com/list/watchlater')) {
-        resultDiv.textContent = '当前不在哔哩哔哩视频页面';
+    chrome.tabs.sendMessage(currentTab.id, { type: 'GET_AD_INFO' }, (response) => {
+      if (chrome.runtime.lastError) {
+        resultDiv.textContent = '插件未完全加载，请等待或刷新';
         return;
       }
 
-      chrome.tabs.sendMessage(currentTab.id, { type: 'GET_AD_INFO' }, (response) => {
-        if (chrome.runtime.lastError) {
-          resultDiv.textContent = '插件未完全加载，请等待或刷新';
-          return;
-        }
-
-        if (response && response.adInfo) {
-          resultDiv.textContent = `${response.adInfo}`;
-        } else {
-          resultDiv.textContent = '未检测到广告信息';
-        }
-      });
+      if (response && response.adInfo) {
+        resultDiv.textContent = `${response.adInfo}`;
+      } else {
+        resultDiv.textContent = '未检测到广告信息';
+      }
     });
-  }
+  });
 
   const enableWhitelistCheckbox = document.getElementById("enableWhitelist") as HTMLInputElement;
   const upUidInput = document.getElementById("upUid") as HTMLInputElement;

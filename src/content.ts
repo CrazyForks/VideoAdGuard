@@ -40,6 +40,14 @@ class AdDetector {
 
   public static async analyze() {
     try {
+      // 检查插件是否启用
+      const settings = await chrome.storage.local.get(['enableExtension']);
+      if (!settings.enableExtension) {
+        console.log('【VideoAdGuard】插件已禁用，跳过广告检测');
+        this.adDetectionResult = '插件已禁用';
+        return;
+      }
+      
       // 在分析开始时先重置状态
       this.resetState();
 
