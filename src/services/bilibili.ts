@@ -15,8 +15,8 @@ export class BilibiliService {
     });
 
     const data = await response.json();
-    console.log('【VideoAdGuard】[BilibiliService] Response data:', data);
     if (data.code !== 0) {
+      console.log('【VideoAdGuard】[BilibiliService] Error:', data.message);
       throw new Error(data.message);
     }
     return data.data;
@@ -40,6 +40,18 @@ export class BilibiliService {
     );
     console.log('【VideoAdGuard】[BilibiliService] Comments result:', data);
     return data;
+  }
+
+  public static async getTopComments(bvid: string) {
+    console.log('【VideoAdGuard】[BilibiliService] Getting top comments for bvid:', bvid);
+    const data = await this.fetchWithCookie(
+      'https://api.bilibili.com/x/v2/reply',
+      { oid: bvid, type: 1}
+    );
+    const top_replies = data?.top_replies || null;
+    const topComment = top_replies ? (top_replies[0]?.content || null) : null;
+    console.log('【VideoAdGuard】[BilibiliService] Top comments result:', topComment);
+    return topComment;
   }
 
   public static async getPlayerInfo(bvid: string, cid: number) {

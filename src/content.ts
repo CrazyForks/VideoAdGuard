@@ -64,7 +64,33 @@ class AdDetector {
         return;
       }
 
-      const comments = await BilibiliService.getComments(bvid);
+      const topComments = await BilibiliService.getTopComments(bvid);
+      const topComment = topComments?.message || null;
+      const jumpUrls = topComments?.jump_url || null;
+      const jumpUrlMessages: Record<string, Record<string, any>> = {};
+      if(jumpUrls) {
+        for (const [jumpUrl, jumpUrlDict] of Object.entries(jumpUrls)) {
+          if (typeof jumpUrlDict !== 'object' || jumpUrlDict === null || (jumpUrlDict as any)?.extra?.is_word_search === true) {
+            jumpUrlMessages["置顶评论"] = {"是否为商品链接": false};
+            continue;
+          }
+          const jumpUrlMessage: Record<string, any> = {};
+          if((jumpUrlDict as any)?.extra?.goods_item_id){
+            jumpUrlMessage["是否为官方商品链接"] = true
+          }
+          else{
+            jumpUrlMessage["是否为官方商品链接"] = false
+          }
+          if ((jumpUrlDict as any)?.app_name !== ""){
+            jumpUrlMessage["平台名称"] = (jumpUrlDict as any).app_name;
+          }
+          if ((jumpUrlDict as any)?.title !== ""){
+            jumpUrlMessage["商品标题"] = (jumpUrlDict as any).title;
+          }
+          jumpUrlMessages[jumpUrl] = jumpUrlMessage;
+        }
+      }
+
       const playerInfo = await BilibiliService.getPlayerInfo(bvid, videoInfo.cid);
 
       // 获取字幕
@@ -86,8 +112,9 @@ class AdDetector {
       // AI分析
       const rawResult = await AIService.detectAd({
         title: videoInfo.title,
-        topComment: comments.upper?.top?.content?.message || null,
-        captions
+        topComment: topComment,
+        addtionMessages: jumpUrlMessages,
+        captions: captions
       });
 
       // 处理可能的转义字符并解析 JSON
