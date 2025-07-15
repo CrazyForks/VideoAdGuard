@@ -8,6 +8,8 @@ class AdDetector {
   private static validIndexLists: number[][] = []; // 存储原始广告索引区间
   private static timeUpdateListener: (() => void) | null = null; // 用于存储 timeupdate 监听器的引用
   private static adMarkerLayer: HTMLElement | null = null; // 添加标记层引用
+  private static skipNotificationElement: HTMLElement | null = null; // 跳过提示元素引用
+  private static skipButtonElement: HTMLElement | null = null; // 跳过按钮元素引用
 
   private static async getCurrentBvid(): Promise<string> {
     // 先尝试从路径中匹配
@@ -28,12 +30,15 @@ class AdDetector {
     this.adTimeRanges = [];
     this.validIndexLists = [];
     
-    // 清理DOM元素
-    document.querySelectorAll('.skip-ad-button10032').forEach(el => el.remove());
+    // 清理跳过按钮
+    this.removeSkipButton();
 
     // 清理标记层
     this.removeAdMarkers();
-    
+
+    // 清理跳过提示
+    this.removeSkipNotification();
+
     // 移除事件监听器
     this.removeAutoSkipListener();
   }
@@ -202,9 +207,9 @@ class AdDetector {
             totalAdDuration < (videoDuration * 0.5);            // 3. 总广告时长小于视频总时长的50%
         
         // 注入跳过按钮
-        this.injectSkipButton(videoElement);
+        this.createSkipButton(videoElement);
         // 创建并显示广告标记层
-        this.markAdPositions(videoElement);
+        this.createAdMarkers(videoElement);
 
         const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
 
@@ -228,7 +233,7 @@ class AdDetector {
   }
 
   // 创建广告标记层的方法
-  private static markAdPositions(videoElement: HTMLVideoElement): void {
+  private static createAdMarkers(videoElement: HTMLVideoElement): void {
 
     // 清除已有标记层
     this.removeAdMarkers();
@@ -292,11 +297,89 @@ class AdDetector {
   
   // 添加：移除广告标记层的方法
   private static removeAdMarkers(): void {
-    // 移除已有的标记层
+    if (this.adMarkerLayer) {
+      this.adMarkerLayer.remove();
+      this.adMarkerLayer = null;
+    }
+    // 同时清理可能存在的其他标记层元素
     document.querySelectorAll('.ad-marker-layer10032').forEach(element => {
       element.remove();
     });
-    this.adMarkerLayer = null;
+  }
+
+  // 创建跳过提示按钮的方法
+  private static createSkipNotification(message: string, rangeKey: string, skippedRanges: Set<string>): void {
+    // 移除已有的提示
+    this.removeSkipNotification();
+
+    // 查找视频播放器容器
+    const videoArea = document.querySelector('.bpx-player-video-area');
+    if (!videoArea) {
+      console.warn('【VideoAdGuard】未找到视频播放器容器，无法显示跳过提示');
+      return;
+    }
+
+    // 创建提示按钮元素
+    const notification = document.createElement('button');
+    notification.className = 'skip-notification10032';
+    notification.textContent = `${message} (点击取消跳过)`;
+    notification.style.cssText = `
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 10000;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    `;
+
+    // 添加悬停效果
+    notification.addEventListener('mouseenter', () => {
+      notification.style.background = 'rgba(255, 255, 255, 0.2)';
+      notification.style.borderColor = 'rgba(255, 255, 255, 0.6)';
+    });
+
+    notification.addEventListener('mouseleave', () => {
+      notification.style.background = 'rgba(0, 0, 0, 0.8)';
+      notification.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+    });
+
+    // 点击事件：取消跳过当前广告
+    notification.addEventListener('click', () => {
+      // 将当前广告区间标记为已跳过，这样就不会自动跳过了
+      skippedRanges.add(rangeKey);
+      console.log(`【VideoAdGuard】用户选择不跳过广告: ${rangeKey}`);
+
+      // 移除提示按钮
+      this.removeSkipNotification();
+    });
+
+    // 保存引用
+    this.skipNotificationElement = notification;
+
+    // 添加到视频播放器容器
+    videoArea.appendChild(notification);
+
+    console.log('【VideoAdGuard】已创建跳过提示按钮');
+  }
+
+  // 移除跳过提示的方法
+  private static removeSkipNotification(): void {
+    if (this.skipNotificationElement) {
+      this.skipNotificationElement.remove();
+      this.skipNotificationElement = null;
+    }
+    // 同时清理可能存在的其他提示元素
+    document.querySelectorAll('.skip-notification10032').forEach(element => {
+      element.remove();
+    });
   }
 
   private static index2second(indexLists: number[][], captions: any[]) {
@@ -316,7 +399,10 @@ class AdDetector {
     return `${hour > 0 ? hour + ':' : ''}${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   }
 
-  private static injectSkipButton(videoElement: HTMLVideoElement) {
+  private static createSkipButton(videoElement: HTMLVideoElement) {
+    // 移除已有的跳过按钮
+    this.removeSkipButton();
+
     const player = document.querySelector('.bpx-player-control-bottom');
     if (!player) {
       console.error("【VideoAdGuard】未找到播放器底部控制栏");
@@ -327,19 +413,35 @@ class AdDetector {
     skipButton.className = 'skip-ad-button10032';
     skipButton.textContent = '跳过广告';
     skipButton.style.cssText = `
-      font-size: 14px;
       position: absolute;
       right: 20px;
       bottom: 100px;
-      z-index: 999;
-      padding: 4px 4px;
-      color: #000000; 
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 14px;
       font-weight: bold;
-      background: rgba(255, 255, 255, 0.7);
-      border: none;
-      border-radius: 4px;
+      z-index: 10000;
+      border: 2px solid rgba(255, 255, 255, 0.3);
       cursor: pointer;
-    `; 
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    `;
+
+    // 添加悬停效果
+    skipButton.addEventListener('mouseenter', () => {
+      skipButton.style.background = 'rgba(255, 255, 255, 0.2)';
+      skipButton.style.borderColor = 'rgba(255, 255, 255, 0.6)';
+    });
+
+    skipButton.addEventListener('mouseleave', () => {
+      skipButton.style.background = 'rgba(0, 0, 0, 0.8)';
+      skipButton.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+    });
+
+    // 保存引用
+    this.skipButtonElement = skipButton;
 
     player.appendChild(skipButton);
 
@@ -347,7 +449,7 @@ class AdDetector {
     skipButton.addEventListener('click', () => {
       const currentTime = videoElement.currentTime;
       console.log('【VideoAdGuard】当前时间:', currentTime);
-      const adSegment = this.adTimeRanges.find(([start, end]) => 
+      const adSegment = this.adTimeRanges.find(([start, end]) =>
         currentTime >= Math.max(start-10,0) && currentTime < end
       );
 
@@ -356,17 +458,32 @@ class AdDetector {
         console.log('【VideoAdGuard】跳转时间:',adSegment[1]);
       }
     });
+
+    console.log('【VideoAdGuard】已创建跳过按钮');
+  }
+
+  // 移除跳过按钮的方法
+  private static removeSkipButton(): void {
+    if (this.skipButtonElement) {
+      this.skipButtonElement.remove();
+      this.skipButtonElement = null;
+    }
+    // 同时清理可能存在的其他跳过按钮元素
+    document.querySelectorAll('.skip-ad-button10032').forEach(element => {
+      element.remove();
+    });
   }
 
   // 设置自动跳过监听器的方法
   private static setupAutoSkip(videoElement: HTMLVideoElement) {
     // 确保移除旧监听器
-    this.removeAutoSkipListener(); 
-    
-    // 用于记录已经跳过的广告区间
+    this.removeAutoSkipListener();
+
+    // 用于记录已经跳过的广告区间和已显示提示的区间
     const skippedRanges = new Set<string>();
+    const notifiedRanges = new Set<string>();
     let lastCheckTime = 0
-    
+
     // 定义并保存 timeupdate 回调
     this.timeUpdateListener = () => {
       // 添加节流，每秒最多执行一次
@@ -374,22 +491,35 @@ class AdDetector {
       if (now - lastCheckTime >= 1000) {
         lastCheckTime = now;
         const currentTime = videoElement.currentTime;
-        
+
         for (const [start, end] of this.adTimeRanges) {
           // 生成当前区间的唯一标识
           const rangeKey = `${start}-${end}`;
-          
+
+          // 检查是否即将进入广告区间（前3秒）
+          const timeToAdStart = start - currentTime;
+          if (timeToAdStart > 0 && timeToAdStart <= 3 && !notifiedRanges.has(rangeKey)) {
+            // 显示即将跳过的提示按钮
+            const message = `即将跳过广告`;
+            this.createSkipNotification(message, rangeKey, skippedRanges);
+            notifiedRanges.add(rangeKey);
+          }
+
           // 如果当前时间在广告区间内，且该区间还未被跳过
-          if (currentTime >= start && currentTime < end && !skippedRanges.has(rangeKey)) { 
+          if (currentTime >= start && currentTime < end && !skippedRanges.has(rangeKey)) {
               console.log(`【VideoAdGuard】检测到广告时间 ${this.second2time(start)}~${this.second2time(end)}，当前时间 (${currentTime}s)，准备跳过...`);
+
+              // 移除提示
+              this.removeSkipNotification();
+
               // 目标时间略微超过广告结束时间，防止误差，并确保不超出视频总长
-              const targetTime = Math.min(end + 0.1, videoElement.duration); 
-              videoElement.currentTime = targetTime; 
+              const targetTime = Math.min(end + 0.1, videoElement.duration);
+              videoElement.currentTime = targetTime;
               console.log(`【VideoAdGuard】已自动跳过到 ${this.second2time(targetTime)}`);
-              
+
               // 将当前区间标记为已跳过
               skippedRanges.add(rangeKey);
-              
+
               // 检查是否所有区间都已经跳过
               const allSkipped = this.adTimeRanges.every(([s, e]) => skippedRanges.has(`${s}-${e}`));
               if (allSkipped) {
@@ -398,10 +528,15 @@ class AdDetector {
               }
               break;
           }
+
+          // 如果已经过了广告区间，移除对应的提示
+          if (currentTime > end && notifiedRanges.has(rangeKey)) {
+            this.removeSkipNotification();
+          }
         }
       }
     };
-      
+
     // 添加事件监听
     videoElement.addEventListener('timeupdate', this.timeUpdateListener);
     console.log("【VideoAdGuard】已添加 timeupdate 监听器用于自动跳过");
@@ -415,6 +550,8 @@ class AdDetector {
       console.log("【VideoAdGuard】已移除 timeupdate 监听器");
       this.timeUpdateListener = null;
     }
+    // 移除跳过提示
+    this.removeSkipNotification();
   }
 }
 
