@@ -10,7 +10,7 @@ export class AIService {
         {
           role: "system",
           content:
-            "你是一个敏感的视频观看者，能根据视频的连贯性改变和宣传推销类内容，找出视频中可能存在的植入广告。内容如果和主题相关，即使是推荐/评价也可能只是分享而不是广告，重点要看有没有提到通过视频博主可以受益的渠道进行购买。",
+            "你是一个敏感的视频观看者，能根据视频的连贯性改变和宣传推销类内容，找出视频中可能存在的植入广告。内容如果和主题相关，即使是推荐/评价也可能只是分享而不是广告，重点要看置顶评论和附加信息中有没有商品链接。",
         },
         {
           role: "user",
@@ -99,18 +99,17 @@ export class AIService {
     addtionMessages: Record<string, Record<string, any>> | null;
     captions: Record<number, string>;
   }): string {
-    const prompt = `视频的标题和置顶评论如下，可供参考判断是否有广告。如果置顶评论中有链接，如果是商品链接，可以根据链接的内容判断视频中的广告商品从而确定哪部分是广告；如果是其他链接，一般认为不是广告。
-
+    const prompt = `视频的标题和置顶评论如下，可供参考判断是否有广告。如果没有置顶评论，认为没有广告。如果置顶评论中有链接，且是商品链接，那么广告商品已经确定，只需要找出介绍链接商品的部分（不要返回介绍其他产品的部分）；如果是其他链接，一般认为不是广告。
     视频标题：${videoInfo.title}
     置顶评论：${videoInfo.topComment || '无'}
     附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
     下面我会给你这个视频的字幕字典，形式为 index: context. 请你完整地找出其中的广告，返回json格式的数据。注意要返回一整段的广告，从广告的引入到结尾重新转折回到视频内容的所有广告部分。
     字幕内容：${JSON.stringify(videoInfo.captions)}
-    示例输出：
+    请以json格式输出，示例如下：
     {
       "exist": <bool. true表示存在广告，false表示不存在广告>,
-      "good_name": <string. 广告的商品名称>,
-      "index_lists": <list[list[int]]. 二维数组，行数表示广告的段数，不要返回过多段，只返回与标题最不相关或者与置顶链接中的商品最相关的部分。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。>
+      "good_name": <list[string]. 广告的商品名称，可以参考置顶评论和附加信息，有多少个链接一般视频就会推销多少个商品>,
+      "index_lists": <list[list[int]]. 二维数组，行数表示广告的段数。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。>
     }`;
     console.log('【VideoAdGuard】构建提示词成功:', prompt);
     return prompt;
