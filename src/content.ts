@@ -241,19 +241,72 @@ class AdDetector {
     }
   }
 
+  // 等待进度条容器加载的方法
+  private static waitForProgressWrap(): Element | null {
+    // 尝试多个可能的选择器
+    const selectors = [
+      '.bpx-player-progress-wrap',
+      '.bpx-player-progress',
+      '.bilibili-player-video-progress-wrap',
+      '.bilibili-player-video-progress'
+    ];
+
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) {
+        console.log(`【VideoAdGuard】找到进度条容器: ${selector}`);
+        return element;
+      }
+    }
+
+    return null;
+  }
+
+  // 带重试机制的创建广告标记层方法
+  private static createAdMarkersWithRetry(videoElement: HTMLVideoElement, retryCount: number): void {
+    const maxRetries = 5;
+
+    if (retryCount >= maxRetries) {
+      console.log('【VideoAdGuard】重试次数已达上限，放弃创建广告标记');
+      return;
+    }
+
+    const progressWrap = this.waitForProgressWrap();
+    if (!progressWrap) {
+      console.log(`【VideoAdGuard】第${retryCount + 1}次重试未找到进度条容器`);
+      setTimeout(() => {
+        this.createAdMarkersWithRetry(videoElement, retryCount + 1);
+      }, 2000); // 每次重试间隔2秒
+      return;
+    }
+
+    // 找到进度条容器，继续创建标记
+    this.createAdMarkersInternal(videoElement, progressWrap);
+  }
+
   // 创建广告标记层的方法
   private static createAdMarkers(videoElement: HTMLVideoElement): void {
 
     // 清除已有标记层
     this.removeAdMarkers();
-    
-    // 获取进度条容器
-    const progressWrap = document.querySelector('.bpx-player-progress-wrap');
+
+    // 获取进度条容器，添加重试机制
+    const progressWrap = this.waitForProgressWrap();
     if (!progressWrap) {
-      console.log('【VideoAdGuard】未找到进度条容器，无法创建广告标记');
+      console.log('【VideoAdGuard】未找到进度条容器，尝试延迟创建广告标记');
+      // 延迟重试
+      setTimeout(() => {
+        this.createAdMarkersWithRetry(videoElement, 0);
+      }, 1000);
       return;
     }
 
+    // 直接创建标记
+    this.createAdMarkersInternal(videoElement, progressWrap);
+  }
+
+  // 内部创建广告标记的实际逻辑
+  private static createAdMarkersInternal(videoElement: HTMLVideoElement, progressWrap: Element): void {
     // 创建广告标记层
     const adMarkerLayer = document.createElement('div');
     adMarkerLayer.className = 'ad-marker-layer10032'; // 添加唯一标识
@@ -266,23 +319,23 @@ class AdDetector {
       pointer-events: none;
       z-index: 30;
     `;
-    
+
     // 保存标记层引用
     this.adMarkerLayer = adMarkerLayer;
-    
+
     // 将广告标记层添加到进度条容器
     progressWrap.appendChild(adMarkerLayer);
-    
+
     // 为每个广告位置创建标记
     if (this.adTimeRanges && this.adTimeRanges.length > 0) {
       // 计算广告位置百分比
       const duration = videoElement.duration || 1; // 防止除以0
-      
+
       this.adTimeRanges.forEach(([start, end]) => {
         // 计算位置百分比
         const startPercent = (start / duration) * 100;
         const endPercent = (end / duration) * 100;
-        
+
         // 创建标记元素
         const marker = document.createElement('div');
         marker.className = 'ad-position-marker10032';
@@ -296,11 +349,11 @@ class AdDetector {
           opacity: 1;
           border-radius: 1px;
         `;
-        
+
         adMarkerLayer.appendChild(marker);
       });
     }
-    
+
     console.log('【VideoAdGuard】已创建广告标记层');
   }
   
