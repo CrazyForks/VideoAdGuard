@@ -12,6 +12,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const localOllamaCheckbox = document.getElementById("localOllama") as HTMLInputElement;
   const autoSkipAdCheckbox = document.getElementById("autoSkipAd") as HTMLInputElement;
   const togglePasswordBtn = document.getElementById("toggleApiKey") as HTMLInputElement;
+  const groqApiKeyInput = document.getElementById("groqApiKey") as HTMLInputElement;
+  const toggleGroqPasswordBtn = document.getElementById("toggleGroqApiKey") as HTMLInputElement;
+  const enableAudioTranscriptionCheckbox = document.getElementById("enableAudioTranscription") as HTMLInputElement;
 
   // 自动保存函数
   async function autoSaveSettings() {
@@ -21,6 +24,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const enableExtension = enableExtensionCheckbox.checked;
     const enableLocalOllama = localOllamaCheckbox.checked;
     const autoSkipAd = autoSkipAdCheckbox.checked;
+    const groqApiKey = groqApiKeyInput.value.trim();
+    const enableAudioTranscription = enableAudioTranscriptionCheckbox.checked;
 
     // 基本验证
     if (!apiUrl) {
@@ -39,7 +44,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      await chrome.storage.local.set({ apiUrl, apiKey, model, enableExtension, enableLocalOllama, autoSkipAd });
+      await chrome.storage.local.set({
+        apiUrl,
+        apiKey,
+        model,
+        enableExtension,
+        enableLocalOllama,
+        autoSkipAd,
+        groqApiKey,
+        enableAudioTranscription
+      });
     } catch (error) {
       console.error('保存设置失败:', error);
     }
@@ -76,6 +90,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  // 添加Groq API密钥切换功能
+  if (toggleGroqPasswordBtn && groqApiKeyInput) {
+    toggleGroqPasswordBtn.addEventListener("click", () => {
+      const type = groqApiKeyInput.getAttribute("type") === "password" ? "text" : "password";
+      groqApiKeyInput.setAttribute("type", type);
+    });
+  }
+
   // 加载已保存的设置
   const settings = await chrome.storage.local.get([
     "apiUrl",
@@ -84,6 +106,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "enableExtension",
     "enableLocalOllama",
     "autoSkipAd",
+    "groqApiKey",
+    "enableAudioTranscription",
   ]);
 
   if (settings.apiUrl) {
@@ -95,7 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (settings.model) {
     modelInput.value = settings.model;
   }
-    if (settings.enableExtension) {
+  if (settings.enableExtension) {
     enableExtensionCheckbox.checked = settings.enableExtension;
   }
   if (settings.enableLocalOllama) {
@@ -105,6 +129,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   if (settings.autoSkipAd) {
     autoSkipAdCheckbox.checked = settings.autoSkipAd;
+  }
+  if (settings.groqApiKey) {
+    groqApiKeyInput.value = settings.groqApiKey;
+  }
+  if (settings.enableAudioTranscription) {
+    enableAudioTranscriptionCheckbox.checked = settings.enableAudioTranscription;
   }
 
   // 获取当前标签页的广告检测结果

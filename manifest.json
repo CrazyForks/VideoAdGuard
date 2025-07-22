@@ -20,7 +20,8 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://*.bilibili.com/*"
+    "https://*.bilibili.com/*",
+    "https://api.groq.com/*"
   ],
   "background": {
     "service_worker": "background.js"

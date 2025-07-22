@@ -93,4 +93,22 @@ export class BilibiliService {
       name: data.name
     };
   }
+
+  /**
+   * 获取视频流信息
+   * @param bvid 视频的BVID
+   * @param cid 视频的CID
+   * @returns 视频流信息，包含播放地址等
+   */
+  public static async getPlayUrl(bvid: string, cid: number) {
+    console.log('【VideoAdGuard】[BilibiliService] Getting play url for bvid:', bvid, 'cid:', cid);
+    const params = { bvid: bvid, cid: cid, fnval: 16 };
+    const signedParams = await WbiUtils.encWbi(params);
+    const data = await this.fetchWithCookie(
+      'https://api.bilibili.com/x/player/wbi/playurl',
+      signedParams
+    );
+    console.log('【VideoAdGuard】[BilibiliService] Play url result:', data);
+    return data;
+  }
 }

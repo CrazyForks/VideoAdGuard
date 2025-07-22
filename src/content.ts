@@ -1,6 +1,7 @@
 import { BilibiliService } from './services/bilibili';
 import { AIService } from './services/ai';
-import { WhitelistService } from './services/whitelist'; 
+import { WhitelistService } from './services/whitelist';
+import { AudioService } from './services/audio';
 
 class AdDetector {
   public static adDetectionResult: string | null = null; // 状态存储
@@ -106,6 +107,50 @@ class AdDetector {
       }
 
       const playerInfo = await BilibiliService.getPlayerInfo(bvid, videoInfo.cid);
+
+      // 获取视频流信息并处理音频
+      try {
+        const playUrlInfo = await BilibiliService.getPlayUrl(bvid, videoInfo.cid);
+        console.log('【VideoAdGuard】视频流信息获取成功:', playUrlInfo);
+
+        // 检查是否启用语音识别
+        const audioSettings = await chrome.storage.local.get(['enableAudioTranscription']);
+        if (audioSettings.enableAudioTranscription) {
+          // 使用完整的音频处理和识别流程
+          const result = await AudioService.processAndTranscribeAudio(bvid, videoInfo.cid, playUrlInfo, {
+            responseFormat: 'verbose_json'
+            // 移除language参数，让API自动检测语言
+          });
+
+          if (result) {
+            console.log('【VideoAdGuard】音频处理和识别完成');
+            console.log('【VideoAdGuard】识别文本:', result.transcription.text);
+            console.log('【VideoAdGuard】详细信息:', result.transcription);
+
+            // 如果有分段信息，可以进一步处理
+            if (result.transcription.segments) {
+              console.log('【VideoAdGuard】语音分段数量:', result.transcription.segments.length);
+              result.transcription.segments.forEach((segment: any, index: number) => {
+                console.log(`【VideoAdGuard】分段${index + 1}: ${segment.start}s-${segment.end}s: ${segment.text}`);
+              });
+            }
+
+            // 这里可以将识别结果用于广告检测或其他用途
+          } else {
+            console.log('【VideoAdGuard】音频处理和识别失败');
+          }
+        } else {
+          // 仅处理音频（不进行语音识别）
+          const audioBlob = await AudioService.processAudio(playUrlInfo);
+          if (audioBlob) {
+            console.log('【VideoAdGuard】音频处理完成:', audioBlob);
+          } else {
+            console.log('【VideoAdGuard】音频处理失败或未找到音频流');
+          }
+        }
+      } catch (error) {
+        console.log('【VideoAdGuard】视频流信息获取失败:', error);
+      }
 
       // 获取字幕
       if (!playerInfo.subtitle?.subtitles?.length) {
