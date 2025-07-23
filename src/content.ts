@@ -112,10 +112,28 @@ class AdDetector {
 
       const playerInfo = await BilibiliService.getPlayerInfo(bvid, videoInfo.cid);
 
-      // 获取字幕
-      if (!playerInfo.subtitle?.subtitles?.length) {
+      // 获取字幕数据 - 统一的数据结构
+      let captions: Record<number, string> = {};
+      let captionsData: any = null;
+
+      // 判断是否有官方字幕
+      if (playerInfo.subtitle?.subtitles?.length) {
+        // 有官方字幕 - 使用官方字幕
+        console.log('【VideoAdGuard】使用官方字幕进行检测');
+        const captionsUrl = 'https:' + playerInfo.subtitle.subtitles[0].subtitle_url;
+        captionsData = await BilibiliService.getCaptions(captionsUrl);
+
+        // 将官方字幕转换为统一格式
+        captionsData.body.forEach((caption: any, index: number) => {
+          captions[index] = caption.content;
+        });
+
+        console.log('【VideoAdGuard】官方字幕数据已加载:', {captions});
+      } else {
+        // 无官方字幕 - 尝试使用音频识别
         const audioSettings = await chrome.storage.local.get(['enableAudioTranscription']);
         if (audioSettings.enableAudioTranscription) {
+          console.log('【VideoAdGuard】无官方字幕，尝试音频识别');
           try {
             // 使用完整的音频处理和识别流程
             const playUrlInfo = await BilibiliService.getPlayUrl(bvid, videoInfo.cid);
@@ -126,98 +144,55 @@ class AdDetector {
             if (result) {
               console.log('【VideoAdGuard】音频识别完成:', result.transcription.text);
 
-              // 将语音识别结果转换为字幕格式
-              const audioCaptions: Record<number, string> = {};
-
+              // 将语音识别结果转换为统一的字幕格式
               if (result.transcription.segments && Array.isArray(result.transcription.segments)) {
-                // 使用分段信息创建字幕数据
-                result.transcription.segments.forEach((segment: any, index: number) => {
+                const uniqueSegments = result.transcription.segments.filter((segment: any, index: number) => {
+                  if (!segment.text || !segment.text.trim()) return false;
+                  // 检查是否与之前的分段有重复的文本内容
+                  const currentText = segment.text.trim();
+                  return !result.transcription.segments.slice(0, index).some((prevSegment: any) => 
+                    prevSegment.text && prevSegment.text.trim() === currentText
+                  );
+                });
+
+                // 使用分段信息创建字幕数据，包含准确的时间信息
+                uniqueSegments.forEach((segment: any, index: number) => {
                   if (segment.text && segment.text.trim()) {
-                    audioCaptions[index] = segment.text.trim();
+                    captions[index] = segment.text.trim();
                   }
                 });
-                console.log(`【VideoAdGuard】语音分段数量: ${result.transcription.segments.length}`);
-              } else if (result.transcription.text) {
-                // 如果没有分段信息，将整个文本作为单个字幕
-                audioCaptions[0] = result.transcription.text.trim();
-              }
 
-              console.log('【VideoAdGuard】音频字幕数据已生成，条目数:', Object.keys(audioCaptions).length);
-
-              // 将音频识别结果用于广告检测
-              if (Object.keys(audioCaptions).length > 0) {
-                console.log('【VideoAdGuard】使用音频识别结果进行广告检测...');
-
-                try {
-                  // 使用音频字幕进行AI分析
-                  const audioAnalysisResult = await AIService.detectAd({
-                    title: videoInfo.title,
-                    topComment: topComment,
-                    addtionMessages: jumpUrlMessages,
-                    captions: audioCaptions
-                  });
-
-                  // 处理音频分析结果
-                  let audioResult;
-                  try {
-                    const cleanJson = typeof audioAnalysisResult === 'string'
-                      ? audioAnalysisResult
-                          .replace(/\s+/g, '')
-                          .replace(/\\/g, '')
-                          .replace(/json/g, '')
-                          .replace(/```/g, '')
-                      : JSON.stringify(audioAnalysisResult);
-
-                    audioResult = JSON.parse(cleanJson);
-
-                    if (typeof audioResult.exist !== 'boolean' || !Array.isArray(audioResult.index_lists)) {
-                      throw new Error('音频分析返回数据格式错误');
-                    }
-
-                    console.log('【VideoAdGuard】音频广告检测结果:', audioResult);
-
-                    // 保存音频分析结果到类属性
-                    this.audioAdDetectionResult = audioResult.exist ? '检测到广告内容' : '未检测到广告';
-
-                    // 如果检测到广告，记录广告片段
-                    if (audioResult.exist && audioResult.index_lists.length > 0) {
-                      console.log('【VideoAdGuard】音频中检测到广告片段:', audioResult.index_lists);
-                      this.audioAdSegments = audioResult.index_lists;
-                    }
-
-                  } catch (parseError) {
-                    console.error('【VideoAdGuard】音频分析结果解析失败:', parseError);
-                    this.audioAdDetectionResult = '音频分析结果解析失败';
-                  }
-
-                } catch (analysisError) {
-                  console.error('【VideoAdGuard】音频广告检测失败:', analysisError);
-                  this.audioAdDetectionResult = '音频广告检测失败';
-                }
-              }
+                // 为音频识别创建准确的captionsData结构，使用Whisper提供的时间信息
+                captionsData = {
+                  body: uniqueSegments.map((segment: any) => ({
+                    content: segment.text?.trim() || '',
+                    from: segment.start || 0, // 使用Whisper提供的开始时间
+                    to: segment.end || 0,     // 使用Whisper提供的结束时间
+                    location: 2
+                  })).filter((item: any) => item.content) // 过滤掉空内容
+                };
+              } 
+              console.log('【VideoAdGuard】音频字幕数据已生成，条目数:', Object.keys(captions).length);
             } else {
               console.log('【VideoAdGuard】音频处理和识别失败');
             }
+          } catch (error) {
+            console.log('【VideoAdGuard】视频流信息获取失败:', error);
           }
-          catch (error) {
-          console.log('【VideoAdGuard】视频流信息获取失败:', error);
-          }
+        } else {
+          console.log('【VideoAdGuard】音频识别功能未启用');
         }
-        console.log('【VideoAdGuard】当前视频无字幕，无法检测');
-        this.adDetectionResult = '当前视频无字幕，无法检测';
-        return;
+
+        // 如果最终没有获取到任何字幕数据
+        if (Object.keys(captions).length === 0) {
+          console.log('【VideoAdGuard】当前视频无字幕且无法进行音频识别，无法检测');
+          this.adDetectionResult = '当前视频无字幕，无法检测';
+          return;
+        }
       }
 
-      const captionsUrl = 'https:' + playerInfo.subtitle.subtitles[0].subtitle_url;
-      const captionsData = await BilibiliService.getCaptions(captionsUrl);
-      
-      // 处理数据
-      const captions: Record<number, string> = {};
-      captionsData.body.forEach((caption: any, index: number) => {
-        captions[index] = caption.content;
-      });
-
-      // AI分析
+      // 使用统一的captions数据进行AI分析
+      console.log('【VideoAdGuard】开始AI广告检测分析...');
       const rawResult = await AIService.detectAd({
         title: videoInfo.title,
         topComment: topComment,
@@ -228,28 +203,30 @@ class AdDetector {
       // 处理可能的转义字符并解析 JSON
       let result;
       try {
-        const cleanJson = typeof rawResult === 'string' 
+        const cleanJson = typeof rawResult === 'string'
           ? rawResult
               .replace(/\s+/g, '')     // 删除所有空白字符
               .replace(/\\/g, '')
               .replace(/json/g, '')
               .replace(/```/g, '')
           : JSON.stringify(rawResult);
-        
+
         result = JSON.parse(cleanJson);
-        
+
         // 验证返回数据格式
         if (typeof result.exist !== 'boolean' || !Array.isArray(result.index_lists)) {
           throw new Error('返回数据格式错误');
         }
-        
+
         // 验证 index_lists 格式
         if (result.exist && !result.index_lists.every((item: number[]) =>
-          Array.isArray(item) && item.length === 2 && 
+          Array.isArray(item) && item.length === 2 &&
           typeof item[0] === 'number' && typeof item[1] === 'number'
         )) {
           throw new Error('广告时间段格式错误');
         }
+
+        console.log('【VideoAdGuard】AI分析完成，检测结果:', result);
       } catch (e) {
         console.error('【VideoAdGuard】大模型返回数据JSON解析失败:', e);
         throw new Error(`AI返回数据格式错误: ${(e as Error).message}`);

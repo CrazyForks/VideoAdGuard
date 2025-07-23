@@ -73,6 +73,7 @@ export class AudioService {
     try {
       // 获取音频URL
       const audioUrl = this.getLowestBandwidthAudioUrl(playUrlData);
+      console.log('【VideoAdGuard】[Audio] 音频URL:', audioUrl);
       if (!audioUrl) {
         return null;
       }
@@ -88,10 +89,11 @@ export class AudioService {
         return audioBlob;
       }
 
-      if (audioBlob.type === 'audio/m4s') {
+      // 处理m4s格式（MPEG-DASH音频片段）
+      if (audioBlob.type === 'audio/m4s' || audioBlob.type === 'application/octet-stream') {
         const m4aBlob = new Blob([audioBlob], { type: 'audio/m4a' });
-        console.log('【VideoAdGuard】[Audio] 音频处理完成');
-        return m4aBlob
+        console.log('【VideoAdGuard】[Audio] m4s格式转换为m4a完成');
+        return m4aBlob;
       }
 
       throw new Error('未知格式: ' + audioBlob.type);

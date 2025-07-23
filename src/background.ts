@@ -140,8 +140,13 @@ class AudioTranscriptionHandler {
     const formData = new FormData();
 
     // 将流包装成Response，然后转换为Blob，但使用更小的块
-    const response = new Response(audioStream);
-    const audioBlob = await response.blob();
+    const streamResponse = new Response(audioStream, {
+      headers: {
+        'Content-Type': fileInfo.type,
+        'Content-Length': fileInfo.size.toString()
+      }
+    });
+    const audioBlob = await streamResponse.blob();
 
     // 检查文件大小，Groq API限制为25MB
     const maxSize = 19 * 1024 * 1024; // 19MB限制
@@ -163,7 +168,7 @@ class AudioTranscriptionHandler {
     formData.append('response_format', options.responseFormat || this.DEFAULT_RESPONSE_FORMAT);
 
     // 调用API
-    const response2 = await fetch(this.GROQ_API_URL, {
+    const response = await fetch(this.GROQ_API_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -171,13 +176,13 @@ class AudioTranscriptionHandler {
       body: formData
     });
 
-    if (!response2.ok) {
-      const errorText = await response2.text();
+    if (!response.ok) {
+      const errorText = await response.text();
       console.error('【VideoAdGuard】[Background] Groq API错误:', errorText);
-      throw new Error(`Groq API调用失败: ${response2.status} ${response2.statusText} - ${errorText}`);
+      throw new Error(`Groq API调用失败: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    return await response2.json();
+    return await response.json();
   }
 
 
