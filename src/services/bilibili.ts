@@ -101,14 +101,14 @@ export class BilibiliService {
    * @returns 视频流信息，包含播放地址等
    */
   public static async getPlayUrl(bvid: string, cid: number) {
-    console.log('【VideoAdGuard】[BilibiliService] Getting play url for bvid:', bvid, 'cid:', cid);
+    console.log('【VideoAdGuard】[BilibiliService] Getting video url for bvid:', bvid, 'cid:', cid);
     const params = { bvid: bvid, cid: cid, fnval: 16 };
     const signedParams = await WbiUtils.encWbi(params);
     const data = await this.fetchWithCookie(
       'https://api.bilibili.com/x/player/wbi/playurl',
       signedParams
     );
-    console.log('【VideoAdGuard】[BilibiliService] Play url result:', data);
+    console.log('【VideoAdGuard】[BilibiliService] video url result:', data);
     return data;
   }
 }

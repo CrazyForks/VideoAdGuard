@@ -5,8 +5,10 @@ import { AudioService } from './services/audio';
 
 class AdDetector {
   public static adDetectionResult: string | null = null; // 状态存储
+  public static audioAdDetectionResult: string | null = null; // 音频广告检测结果
   private static adTimeRanges: number[][] = []; // 存储广告时间段
   private static validIndexLists: number[][] = []; // 存储原始广告索引区间
+  private static audioAdSegments: number[][] = []; // 存储音频广告片段
   private static timeUpdateListener: (() => void) | null = null; // 用于存储 timeupdate 监听器的引用
   private static adMarkerLayer: HTMLElement | null = null; // 添加标记层引用
   private static skipNotificationElement: HTMLElement | null = null; // 跳过提示元素引用
@@ -30,8 +32,10 @@ class AdDetector {
   private static resetState() {
     // 重置所有静态变量
     this.adDetectionResult = null;
+    this.audioAdDetectionResult = null;
     this.adTimeRanges = [];
     this.validIndexLists = [];
+    this.audioAdSegments = [];
     this.lastSkippedAdRange = null;
 
     // 清理延时器
@@ -108,52 +112,97 @@ class AdDetector {
 
       const playerInfo = await BilibiliService.getPlayerInfo(bvid, videoInfo.cid);
 
-      // 获取视频流信息并处理音频
-      try {
-        const playUrlInfo = await BilibiliService.getPlayUrl(bvid, videoInfo.cid);
-        console.log('【VideoAdGuard】视频流信息获取成功:', playUrlInfo);
-
-        // 检查是否启用语音识别
-        const audioSettings = await chrome.storage.local.get(['enableAudioTranscription']);
-        if (audioSettings.enableAudioTranscription) {
-          // 使用完整的音频处理和识别流程
-          const result = await AudioService.processAndTranscribeAudio(bvid, videoInfo.cid, playUrlInfo, {
-            responseFormat: 'verbose_json'
-            // 移除language参数，让API自动检测语言
-          });
-
-          if (result) {
-            console.log('【VideoAdGuard】音频处理和识别完成');
-            console.log('【VideoAdGuard】识别文本:', result.transcription.text);
-            console.log('【VideoAdGuard】详细信息:', result.transcription);
-
-            // 如果有分段信息，可以进一步处理
-            if (result.transcription.segments) {
-              console.log('【VideoAdGuard】语音分段数量:', result.transcription.segments.length);
-              result.transcription.segments.forEach((segment: any, index: number) => {
-                console.log(`【VideoAdGuard】分段${index + 1}: ${segment.start}s-${segment.end}s: ${segment.text}`);
-              });
-            }
-
-            // 这里可以将识别结果用于广告检测或其他用途
-          } else {
-            console.log('【VideoAdGuard】音频处理和识别失败');
-          }
-        } else {
-          // 仅处理音频（不进行语音识别）
-          const audioBlob = await AudioService.processAudio(playUrlInfo);
-          if (audioBlob) {
-            console.log('【VideoAdGuard】音频处理完成:', audioBlob);
-          } else {
-            console.log('【VideoAdGuard】音频处理失败或未找到音频流');
-          }
-        }
-      } catch (error) {
-        console.log('【VideoAdGuard】视频流信息获取失败:', error);
-      }
-
       // 获取字幕
       if (!playerInfo.subtitle?.subtitles?.length) {
+        const audioSettings = await chrome.storage.local.get(['enableAudioTranscription']);
+        if (audioSettings.enableAudioTranscription) {
+          try {
+            // 使用完整的音频处理和识别流程
+            const playUrlInfo = await BilibiliService.getPlayUrl(bvid, videoInfo.cid);
+            const result = await AudioService.processAndTranscribeAudio(bvid, videoInfo.cid, playUrlInfo, {
+              responseFormat: 'verbose_json'
+            });
+
+            if (result) {
+              console.log('【VideoAdGuard】音频识别完成:', result.transcription.text);
+
+              // 将语音识别结果转换为字幕格式
+              const audioCaptions: Record<number, string> = {};
+
+              if (result.transcription.segments && Array.isArray(result.transcription.segments)) {
+                // 使用分段信息创建字幕数据
+                result.transcription.segments.forEach((segment: any, index: number) => {
+                  if (segment.text && segment.text.trim()) {
+                    audioCaptions[index] = segment.text.trim();
+                  }
+                });
+                console.log(`【VideoAdGuard】语音分段数量: ${result.transcription.segments.length}`);
+              } else if (result.transcription.text) {
+                // 如果没有分段信息，将整个文本作为单个字幕
+                audioCaptions[0] = result.transcription.text.trim();
+              }
+
+              console.log('【VideoAdGuard】音频字幕数据已生成，条目数:', Object.keys(audioCaptions).length);
+
+              // 将音频识别结果用于广告检测
+              if (Object.keys(audioCaptions).length > 0) {
+                console.log('【VideoAdGuard】使用音频识别结果进行广告检测...');
+
+                try {
+                  // 使用音频字幕进行AI分析
+                  const audioAnalysisResult = await AIService.detectAd({
+                    title: videoInfo.title,
+                    topComment: topComment,
+                    addtionMessages: jumpUrlMessages,
+                    captions: audioCaptions
+                  });
+
+                  // 处理音频分析结果
+                  let audioResult;
+                  try {
+                    const cleanJson = typeof audioAnalysisResult === 'string'
+                      ? audioAnalysisResult
+                          .replace(/\s+/g, '')
+                          .replace(/\\/g, '')
+                          .replace(/json/g, '')
+                          .replace(/```/g, '')
+                      : JSON.stringify(audioAnalysisResult);
+
+                    audioResult = JSON.parse(cleanJson);
+
+                    if (typeof audioResult.exist !== 'boolean' || !Array.isArray(audioResult.index_lists)) {
+                      throw new Error('音频分析返回数据格式错误');
+                    }
+
+                    console.log('【VideoAdGuard】音频广告检测结果:', audioResult);
+
+                    // 保存音频分析结果到类属性
+                    this.audioAdDetectionResult = audioResult.exist ? '检测到广告内容' : '未检测到广告';
+
+                    // 如果检测到广告，记录广告片段
+                    if (audioResult.exist && audioResult.index_lists.length > 0) {
+                      console.log('【VideoAdGuard】音频中检测到广告片段:', audioResult.index_lists);
+                      this.audioAdSegments = audioResult.index_lists;
+                    }
+
+                  } catch (parseError) {
+                    console.error('【VideoAdGuard】音频分析结果解析失败:', parseError);
+                    this.audioAdDetectionResult = '音频分析结果解析失败';
+                  }
+
+                } catch (analysisError) {
+                  console.error('【VideoAdGuard】音频广告检测失败:', analysisError);
+                  this.audioAdDetectionResult = '音频广告检测失败';
+                }
+              }
+            } else {
+              console.log('【VideoAdGuard】音频处理和识别失败');
+            }
+          }
+          catch (error) {
+          console.log('【VideoAdGuard】视频流信息获取失败:', error);
+          }
+        }
         console.log('【VideoAdGuard】当前视频无字幕，无法检测');
         this.adDetectionResult = '当前视频无字幕，无法检测';
         return;
@@ -299,7 +348,6 @@ class AdDetector {
     for (const selector of selectors) {
       const element = document.querySelector(selector);
       if (element) {
-        console.log(`【VideoAdGuard】找到进度条容器: ${selector}`);
         return element;
       }
     }
@@ -312,13 +360,12 @@ class AdDetector {
     const maxRetries = 5;
 
     if (retryCount >= maxRetries) {
-      console.log('【VideoAdGuard】重试次数已达上限，放弃创建广告标记');
+      console.log('【VideoAdGuard】未找到进度条容器，放弃创建广告标记');
       return;
     }
 
     const progressWrap = this.waitForProgressWrap();
     if (!progressWrap) {
-      console.log(`【VideoAdGuard】第${retryCount + 1}次重试未找到进度条容器`);
       setTimeout(() => {
         this.createAdMarkersWithRetry(videoElement, retryCount + 1);
       }, 2000); // 每次重试间隔2秒

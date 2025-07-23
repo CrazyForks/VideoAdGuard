@@ -1,106 +1,169 @@
-export {};
+/**
+ * Background Script - 后台脚本
+ * 负责处理跨域请求和语音识别API调用
+ */
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+export {}
 
+// 消息类型枚举
+enum MessageType {
+  TRANSCRIBE_AUDIO_FILE_STREAM = 'TRANSCRIBE_AUDIO_FILE_STREAM',
+  API_REQUEST = 'API_REQUEST'
+}
 
+// 响应接口
+interface ApiResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
 
+// 消息处理器类
+class MessageHandler {
+  /**
+   * 处理来自content script的消息
+   */
+  static handleMessage(message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response: ApiResponse) => void): boolean {
+    try {
+      // 处理语音识别请求
+      if (message.type === MessageType.TRANSCRIBE_AUDIO_FILE_STREAM) {
+        AudioTranscriptionHandler.handle(message.data, sendResponse);
+        return true; // 异步响应
+      }
 
-  // 处理语音识别请求（文件流方式）
-  if (message.type === 'TRANSCRIBE_AUDIO_FILE_STREAM') {
-    handleAudioTranscriptionFileStream(message.data, sendResponse);
-    return true; // 表示异步响应
+      // 处理通用API请求
+      if (MessageHandler.isApiRequest(message)) {
+        ApiRequestHandler.handle(message, sendResponse);
+        return true; // 异步响应
+      }
+
+      // 无效消息结构
+      sendResponse({ success: false, error: "Invalid message structure" });
+      return false;
+    } catch (error) {
+      console.error('【VideoAdGuard】[Background] 消息处理失败:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return false;
+    }
   }
 
-  // 处理原有的API请求
-  const { url, headers, body } = message;
-  if (url && headers && body) {
-    fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        sendResponse({ success: true, data });
-      })
-      .catch((error) => {
-        sendResponse({ success: false, error: error.toString() });
+  /**
+   * 检查是否为API请求
+   */
+  private static isApiRequest(message: any): boolean {
+    return message.url && message.headers && message.body;
+  }
+}
+
+// 通用API请求处理器
+class ApiRequestHandler {
+  /**
+   * 处理通用API请求
+   */
+  static async handle(message: any, sendResponse: (response: ApiResponse) => void): Promise<void> {
+    try {
+      const { url, headers, body } = message;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
       });
 
-    return true; // 表示异步响应
+      const data = await response.json();
+      sendResponse({ success: true, data });
+    } catch (error) {
+      console.error('【VideoAdGuard】[Background] API请求失败:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+}
+
+// 音频转录处理器
+class AudioTranscriptionHandler {
+  private static readonly GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
+  private static readonly DEFAULT_MODEL = 'whisper-large-v3-turbo';
+  private static readonly DEFAULT_RESPONSE_FORMAT = 'verbose_json';
+
+  /**
+   * 处理音频转录请求
+   */
+  static async handle(data: any, sendResponse: (response: ApiResponse) => void): Promise<void> {
+    try {
+      console.log('【VideoAdGuard】[Background] 开始语音识别...');
+
+      const { audioUrl, fileInfo, apiKey, options } = data;
+
+      // 验证API密钥
+      if (!apiKey) {
+        throw new Error('未配置Groq API密钥，请在设置中配置');
+      }
+
+      console.log(`【VideoAdGuard】[Background] 调用Groq API，文件大小: ${Math.round(fileInfo.size / 1024)}KB`);
+
+      // 直接使用流式方式调用Groq API
+      const result = await this.callGroqApiWithStream(audioUrl, fileInfo, options, apiKey);
+
+      console.log('【VideoAdGuard】[Background] 语音识别成功');
+      sendResponse({ success: true, data: result });
+    } catch (error) {
+      console.error('【VideoAdGuard】[Background] 语音识别失败:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 
-  // 如果不符合结构，直接返回错误
-  sendResponse({ success: false, error: "Invalid message structure" });
-  return false;
-});
-
-
-
-
-
-/**
- * 处理音频转录请求（文件流方式，模拟file.stream()）
- * @param data 音频URL、文件信息和选项
- * @param sendResponse 响应回调函数
- */
-async function handleAudioTranscriptionFileStream(data: any, sendResponse: (response: any) => void) {
-  try {
-    console.log('【VideoAdGuard】[Background] 开始处理语音识别请求（文件流方式）...');
-    console.log('【VideoAdGuard】[Background] 接收到的数据:', data);
-
-    const { audioUrl, fileInfo, apiKey, options } = data;
-
-    if (!apiKey) {
-      console.error('【VideoAdGuard】[Background] API密钥未配置');
-      throw new Error('未配置Groq API密钥，请在设置中配置');
-    }
-
-    console.log('【VideoAdGuard】[Background] API密钥已配置，长度:', apiKey.length);
-    console.log('【VideoAdGuard】[Background] 文件信息:', fileInfo);
-    console.log('【VideoAdGuard】[Background] 音频URL:', audioUrl);
-
-    // 从URL获取音频数据，模拟file.stream()的行为
+  /**
+   * 使用流式方式调用Groq API
+   */
+  private static async callGroqApiWithStream(audioUrl: string, fileInfo: any, options: any, apiKey: string): Promise<any> {
+    // 获取音频流
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
       throw new Error('无法获取音频数据');
     }
 
-    // 获取ReadableStream，类似于file.stream()
-    const fileStream = audioResponse.body;
-    if (!fileStream) {
+    const audioStream = audioResponse.body;
+    if (!audioStream) {
       throw new Error('无法获取文件流');
     }
 
-    // 创建一个新的Response对象，使用流数据
-    const streamResponse = new Response(fileStream, {
-      headers: {
-        'Content-Type': fileInfo.type,
-        'Content-Length': fileInfo.size.toString()
-      }
-    });
-
-    // 将流转换为Blob，但保持流式特性
-    const audioBlob = await streamResponse.blob();
-
-    // 创建FormData，模拟使用file.stream()的效果
+    // 创建FormData，使用Response对象作为文件
     const formData = new FormData();
 
-    // 创建一个类似File对象的Blob，包含文件信息
+    // 将流包装成Response，然后转换为Blob，但使用更小的块
+    const response = new Response(audioStream);
+    const audioBlob = await response.blob();
+
+    // 检查文件大小，Groq API限制为25MB
+    const maxSize = 19 * 1024 * 1024; // 19MB限制
+    const fileSizeMB = audioBlob.size / 1024 / 1024;
+
+    console.log(`【VideoAdGuard】[Background] 音频文件大小: ${fileSizeMB.toFixed(2)}MB`);
+
+    if (audioBlob.size > maxSize) {
+      throw new Error(`音频文件过大 (${fileSizeMB.toFixed(2)}MB)，超过Groq API限制(19MB)。请尝试使用较短的音频片段或降低音频质量。`);
+    }
+
     const fileBlob = new File([audioBlob], fileInfo.name, {
       type: fileInfo.type,
       lastModified: Date.now()
     });
 
     formData.append('file', fileBlob);
-    formData.append('model', options.model || 'whisper-large-v3-turbo');
-    formData.append('response_format', options.responseFormat || 'verbose_json');
+    formData.append('model', options.model || this.DEFAULT_MODEL);
+    formData.append('response_format', options.responseFormat || this.DEFAULT_RESPONSE_FORMAT);
 
-    console.log('【VideoAdGuard】[Background] 使用文件流处理，文件大小:', fileInfo.size, 'bytes');
-    console.log('【VideoAdGuard】[Background] 准备调用Groq API...');
-
-    // 调用Groq API
-    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    // 调用API
+    const response2 = await fetch(this.GROQ_API_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -108,26 +171,19 @@ async function handleAudioTranscriptionFileStream(data: any, sendResponse: (resp
       body: formData
     });
 
-    console.log('【VideoAdGuard】[Background] Groq API响应状态:', response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('【VideoAdGuard】[Background] Groq API错误响应:', errorText);
-      throw new Error(`Groq API调用失败: ${response.status} ${response.statusText} - ${errorText}`);
+    if (!response2.ok) {
+      const errorText = await response2.text();
+      console.error('【VideoAdGuard】[Background] Groq API错误:', errorText);
+      throw new Error(`Groq API调用失败: ${response2.status} ${response2.statusText} - ${errorText}`);
     }
 
-    const result = await response.json();
-    console.log('【VideoAdGuard】[Background] 语音识别成功（文件流方式）');
-
-    sendResponse({
-      success: true,
-      data: result
-    });
-  } catch (error) {
-    console.error('【VideoAdGuard】[Background] 语音识别失败（文件流方式）:', error);
-    sendResponse({
-      success: false,
-      error: error instanceof Error ? error.message : String(error)
-    });
+    return await response2.json();
   }
+
+
 }
+
+// 注册消息监听器
+chrome.runtime.onMessage.addListener(MessageHandler.handleMessage);
+
+

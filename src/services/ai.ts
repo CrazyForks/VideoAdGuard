@@ -111,7 +111,7 @@ export class AIService {
       "good_name": <list[string]. 广告的商品名称，可以参考置顶评论和附加信息，有多少个链接一般视频就会推销多少个商品>,
       "index_lists": <list[list[int]]. 二维数组，行数表示广告的段数。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。>
     }`;
-    console.log('【VideoAdGuard】构建提示词成功:', prompt);
+    console.log('【VideoAdGuard】构建提示词成功:', {prompt});
     return prompt;
   }
 
