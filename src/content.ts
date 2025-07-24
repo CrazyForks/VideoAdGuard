@@ -52,10 +52,42 @@ class AdDetector {
     this.removeAutoSkipListener();
   }
 
+  /**
+   * 限制模式下的广告预检测条件判断
+   * 用户可以根据需要修改此方法中的判断逻辑
+   */
+  private static checkAdCondition(
+    videoInfo: any,
+    topComment: string | null,
+    jumpUrl: Record<string, Record<string, any>> | null,
+  ): boolean {
+    // TODO: 用户需要在此处实现具体的广告预检测逻辑
+    // 这里提供一个示例框架，用户可以根据实际需求修改
+
+    console.log('【VideoAdGuard】限制模式：开始广告预检测条件判断');
+
+    // 示例条件1：检查置顶评论是否包含商品链接
+    if (topComment && jumpUrl) {
+      const hasProductLinks = Object.keys(jumpUrl).some(key =>
+        jumpUrl[key] && typeof jumpUrl[key] === 'object'
+      );
+      if (hasProductLinks) {
+        console.log('【VideoAdGuard】限制模式：检测到置顶评论包含链接');
+        return true;
+      }
+    }
+
+    // 用户可以在此处添加更多检测条件
+    // 例如：视频时长、标题关键词、UP主信息等
+
+    console.log('【VideoAdGuard】限制模式：未满足广告预检测条件');
+    return false;
+  }
+
   public static async analyze() {
     try {
       // 检查插件是否启用
-      const settings = await chrome.storage.local.get(['enableExtension']);
+      const settings = await chrome.storage.local.get(['enableExtension', 'restrictedMode']);
       if (!settings.enableExtension) {
         console.log('【VideoAdGuard】插件已禁用，跳过广告检测');
         this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') +'插件已禁用';
@@ -144,6 +176,33 @@ class AdDetector {
         }
       }
 
+      // 检查是否开启限制模式
+      const isRestrictedMode = settings.restrictedMode || false;
+      console.log('【VideoAdGuard】限制模式状态:', isRestrictedMode ? '已开启' : '已关闭');
+      let hasAdCondition = false;
+      let good_name: string[] = [];
+      if (isRestrictedMode) { 
+        // TODO: 用户需要在此处添加广告预检测条件
+        // 示例条件判断逻辑（用户可以根据需要修改）：
+        for (const [jumpUrl, jumpUrlMessage] of Object.entries(jumpUrlMessages)){
+          if (jumpUrlMessage["是否为官方商品链接"]) {
+            hasAdCondition = true;
+            const ad_text = jumpUrlMessage["链接标题"];
+            try {
+              const response = await AIService.extractProductName(ad_text);
+              good_name.push(response);
+              console.log('【VideoAdGuard】限制模式：成功提取商品名称:', response);
+            } catch (error) {
+              console.error('【VideoAdGuard】限制模式：提取商品名称失败:', error);
+              // 如果提取失败，使用原始链接标题作为商品名
+              good_name.push(ad_text);
+            }
+          }
+        }
+      }
+
+
+
       const playerInfo = await BilibiliService.getPlayerInfo(bvid, videoInfo.cid);
 
       // 获取字幕数据 - 统一的数据结构
@@ -226,14 +285,38 @@ class AdDetector {
         }
       }
 
-      // 使用统一的captions数据进行AI分析
-      console.log('【VideoAdGuard】开始AI广告检测分析...');
-      const rawResult = await AIService.detectAd({
-        title: videoInfo.title,
-        topComment: topComment,
-        addtionMessages: jumpUrlMessages,
-        captions: captions
-      });
+      // 限制模式处理逻辑
+      let rawResult;
+      if (isRestrictedMode) {
+        if (hasAdCondition) {
+          console.log('【VideoAdGuard】限制模式：检测到可能存在广告，调用大模型进行详细分析...');
+          console.log('【VideoAdGuard】限制模式：预提取的商品名称:', good_name);
+          rawResult = await AIService.detectAdRestricted({
+            title: videoInfo.title,
+            topComment: topComment,
+            addtionMessages: jumpUrlMessages,
+            captions: captions,
+            goodNames: good_name
+          });
+        } else {
+          console.log('【VideoAdGuard】限制模式：未检测到广告条件，跳过大模型分析');
+          // 直接返回无广告结果
+          rawResult = JSON.stringify({
+            exist: false,
+            good_name: [],
+            index_lists: []
+          });
+        }
+      } else {
+        // 正常模式：使用统一的captions数据进行AI分析
+        console.log('【VideoAdGuard】开始AI广告检测分析...');
+        rawResult = await AIService.detectAd({
+          title: videoInfo.title,
+          topComment: topComment,
+          addtionMessages: jumpUrlMessages,
+          captions: captions
+        });
+      }
 
       // 处理可能的转义字符并解析 JSON
       let result;

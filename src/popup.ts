@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const enableExtensionCheckbox = document.getElementById("enableExtension") as HTMLInputElement;
   const localOllamaCheckbox = document.getElementById("localOllama") as HTMLInputElement;
   const autoSkipAdCheckbox = document.getElementById("autoSkipAd") as HTMLInputElement;
+  const restrictedModeCheckbox = document.getElementById("restrictedMode") as HTMLInputElement;
   const togglePasswordBtn = document.getElementById("toggleApiKey") as HTMLInputElement;
   const groqApiKeyInput = document.getElementById("groqApiKey") as HTMLInputElement;
   const toggleGroqPasswordBtn = document.getElementById("toggleGroqApiKey") as HTMLInputElement;
@@ -24,6 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const enableExtension = enableExtensionCheckbox.checked;
     const enableLocalOllama = localOllamaCheckbox.checked;
     const autoSkipAd = autoSkipAdCheckbox.checked;
+    const restrictedMode = restrictedModeCheckbox.checked;
     const groqApiKey = groqApiKeyInput.value.trim();
     const enableAudioTranscription = enableAudioTranscriptionCheckbox.checked;
 
@@ -51,6 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         enableExtension,
         enableLocalOllama,
         autoSkipAd,
+        restrictedMode,
         groqApiKey,
         enableAudioTranscription
       });
@@ -106,6 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "enableExtension",
     "enableLocalOllama",
     "autoSkipAd",
+    "restrictedMode",
     "groqApiKey",
     "enableAudioTranscription",
   ]);
@@ -129,6 +133,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   if (settings.autoSkipAd) {
     autoSkipAdCheckbox.checked = settings.autoSkipAd;
+  }
+  if (settings.restrictedMode) {
+    restrictedModeCheckbox.checked = settings.restrictedMode;
   }
   if (settings.groqApiKey) {
     groqApiKeyInput.value = settings.groqApiKey;
