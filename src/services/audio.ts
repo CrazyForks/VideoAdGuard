@@ -3,8 +3,6 @@
  * 负责音频下载、格式转换和语音识别
  */
 export class AudioService {
-  private static readonly CACHE_NAME = 'video-ad-guard-audio';
-  private static readonly CACHE_EXPIRY_HOURS = 24;
 
   /**
    * 从视频流数据中获取最低带宽的音频流URL
@@ -172,15 +170,11 @@ export class AudioService {
 
   /**
    * 完整的音频处理和识别流程
-   * @param bvid 视频BV号
-   * @param cid 视频CID
    * @param playUrlData 视频流数据
    * @param transcribeOptions 语音识别选项
    * @returns 包含音频文件和识别结果的对象
    */
   public static async processAndTranscribeAudio(
-    bvid: string,
-    cid: number,
     playUrlData: any,
     transcribeOptions: {
       model?: string;
@@ -193,26 +187,14 @@ export class AudioService {
     try {
       console.log('【VideoAdGuard】[Audio] 开始完整的音频处理和识别流程...');
 
-      // 1. 检查识别结果缓存
-      const cachedTranscription = await this.getTranscriptionFromCache(bvid, cid);
-      if (cachedTranscription) {
-        console.log('【VideoAdGuard】[Audio] 使用缓存的识别结果');
-        return {
-          transcription: JSON.parse(cachedTranscription)
-        };
-      }
-
-      // 2. 处理音频
+      // 1. 处理音频
       const audioBlob = await this.processAudio(playUrlData);
       if (!audioBlob) {
         throw new Error('音频处理失败');
       }
 
-      // 3. 语音识别
+      // 2. 语音识别
       const transcription = await this.transcribeAudio(audioBlob, transcribeOptions);
-
-      // 4. 缓存识别结果
-      await this.saveTranscriptionToCache(bvid, cid, JSON.stringify(transcription));
 
       console.log('【VideoAdGuard】[Audio] 完整流程处理成功');
       return {
@@ -224,78 +206,4 @@ export class AudioService {
     }
   }
 
-  /**
-   * 从缓存中获取语音识别结果
-   * @param bvid 视频BV号
-   * @param cid 视频CID
-   * @returns 缓存的识别结果或null
-   */
-  public static async getTranscriptionFromCache(bvid: string, cid: number): Promise<string | null> {
-    try {
-      const cacheKey = `transcription_${bvid}_${cid}`;
-      const cache = await caches.open(this.CACHE_NAME);
-      const response = await cache.match(cacheKey);
-      if (response) {
-        const result = await response.text();
-        return result;
-      }
-      return null;
-    } catch (error) {
-      console.error('【VideoAdGuard】[Audio] 从缓存读取识别结果失败:', error);
-      return null;
-    }
-  }
-
-  /**
-   * 将语音识别结果保存到缓存
-   * @param bvid 视频BV号
-   * @param cid 视频CID
-   * @param transcription 识别结果文本
-   */
-  public static async saveTranscriptionToCache(bvid: string, cid: number, transcription: string): Promise<void> {
-    try {
-      const cacheKey = `transcription_${bvid}_${cid}`;
-      const cache = await caches.open(this.CACHE_NAME);
-      const response = new Response(transcription, {
-        headers: {
-          'Content-Type': 'text/plain',
-          'Cache-Control': `max-age=${this.CACHE_EXPIRY_HOURS * 3600}`
-        }
-      });
-      await cache.put(cacheKey, response);
-      console.log('【VideoAdGuard】[Audio] 识别结果已保存到缓存');
-    } catch (error) {
-      console.error('【VideoAdGuard】[Audio] 保存识别结果到缓存失败:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 清理过期的缓存
-   */
-  public static async cleanExpiredCache(): Promise<void> {
-    try {
-      const cache = await caches.open(this.CACHE_NAME);
-      const requests = await cache.keys();
-
-      for (const request of requests) {
-        const response = await cache.match(request);
-        if (response) {
-          const cacheControl = response.headers.get('cache-control');
-          if (cacheControl) {
-            const maxAge = parseInt(cacheControl.match(/max-age=(\d+)/)?.[1] || '0');
-            const responseDate = new Date(response.headers.get('date') || Date.now());
-            const expiryDate = new Date(responseDate.getTime() + maxAge * 1000);
-
-            if (Date.now() > expiryDate.getTime()) {
-              await cache.delete(request);
-              console.log('【VideoAdGuard】[Audio] 已清理过期缓存');
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('【VideoAdGuard】[Audio] 清理缓存失败:', error);
-    }
-  }
 }

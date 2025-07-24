@@ -171,7 +171,7 @@ class AdDetector {
           try {
             // 使用完整的音频处理和识别流程
             const playUrlInfo = await BilibiliService.getPlayUrl(bvid, videoInfo.cid);
-            const result = await AudioService.processAndTranscribeAudio(bvid, videoInfo.cid, playUrlInfo, {
+            const result = await AudioService.processAndTranscribeAudio(playUrlInfo, {
               responseFormat: 'verbose_json'
             });
 
