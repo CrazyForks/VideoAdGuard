@@ -753,12 +753,38 @@
         
         // 添加 URL 变化监听
         let lastUrl = location.href;
+        let lastBvid = null;
+
+        // 提取BV号的辅助函数
+        const extractBvidFromUrl = (url) => {
+            const pathMatch = url.match(/BV[\w]+/);
+            if (pathMatch) return pathMatch[0];
+
+            try {
+                const urlObj = new URL(url);
+                const bvid = urlObj.searchParams.get('bvid');
+                return bvid;
+            } catch (e) {
+                return null;
+            }
+        };
+
         new MutationObserver(() => {
             const url = location.href;
             if (url !== lastUrl) {
+                const currentBvid = extractBvidFromUrl(url);
+                const previousBvid = extractBvidFromUrl(lastUrl);
+
                 lastUrl = url;
-                console.log('【VideoAdGuard】URL changed:', url);
-                AdDetector.analyze();
+
+                // 只有当BV号发生变化时才触发检测逻辑
+                if (currentBvid !== previousBvid) {
+                    console.log('【VideoAdGuard】URL changed with different BV:', url, 'Previous BV:', previousBvid, 'Current BV:', currentBvid);
+                    lastBvid = currentBvid;
+                    AdDetector.analyze();
+                } else {
+                    console.log('【VideoAdGuard】URL changed but BV unchanged, skipping detection:', url);
+                }
             }
         }).observe(document, { subtree: true, childList: true });
         

@@ -99,11 +99,11 @@ export class AIService {
     addtionMessages: Record<string, Record<string, any>> | null;
     captions: Record<number, string>;
   }): string {
-    const prompt = `视频的标题和置顶评论如下，可供参考判断是否有广告。如果没有置顶评论，认为没有广告。如果置顶评论中有链接，且是商品链接，那么广告商品已经确定，只需要找出介绍链接商品的部分（不要返回介绍其他产品的部分）；如果是其他链接，一般认为不是广告。
+    const prompt = `视频的标题和置顶评论如下，可供参考判断是否有广告。
     视频标题：${videoInfo.title}
-    置顶评论：${videoInfo.topComment || '无'}
-    附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
-    下面我会给你这个视频的字幕字典，形式为 index: context. 请你完整地找出其中的广告，返回json格式的数据。注意要返回一整段的广告，从广告的引入到结尾重新转折回到视频内容的所有广告部分。
+    置顶评论：${videoInfo.topComment || '无'}，如果没有置顶评论，认为没有广告。
+    附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}，如果置顶评论中有链接，且是商品链接，那么广告商品已经确定，只需要找出介绍商品的部分（介绍其他产品认为是用于对比，不用管）；如果不是商品链接，认为没有广告。
+    下面我会给你这个视频的字幕字典，形式为 index: context. 如果有广告，请你完整地找出其中的广告，返回json格式的数据。注意要返回一整段的广告，从广告的引入到结尾重新转折回到视频内容的所有广告部分。
     字幕内容：${JSON.stringify(videoInfo.captions)}
     请以json格式输出，示例如下：
     {

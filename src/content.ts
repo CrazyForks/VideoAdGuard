@@ -8,7 +8,6 @@ class AdDetector {
   public static audioAdDetectionResult: string | null = null; // 音频广告检测结果
   private static adTimeRanges: number[][] = []; // 存储广告时间段
   private static validIndexLists: number[][] = []; // 存储原始广告索引区间
-  private static audioAdSegments: number[][] = []; // 存储音频广告片段
   private static timeUpdateListener: (() => void) | null = null; // 用于存储 timeupdate 监听器的引用
   private static adMarkerLayer: HTMLElement | null = null; // 添加标记层引用
   private static skipNotificationElement: HTMLElement | null = null; // 跳过提示元素引用
@@ -35,7 +34,6 @@ class AdDetector {
     this.audioAdDetectionResult = null;
     this.adTimeRanges = [];
     this.validIndexLists = [];
-    this.audioAdSegments = [];
     this.lastSkippedAdRange = null;
 
     // 清理延时器
@@ -87,7 +85,10 @@ class AdDetector {
       const topComment = topComments?.message || null;
       const jumpUrls = topComments?.jump_url || null;
       const jumpUrlMessages: Record<string, Record<string, any>> = {};
-      if(jumpUrls) {
+      if(topComment && (Object.keys(jumpUrls).length===0 || jumpUrls===null)){
+        jumpUrlMessages["置顶评论"] = {"是否有链接": false};
+      }
+      else if(jumpUrls) {
         for (const [jumpUrl, jumpUrlDict] of Object.entries(jumpUrls)) {
           if (typeof jumpUrlDict !== 'object' || jumpUrlDict === null || (jumpUrlDict as any)?.extra?.is_word_search === true) {
             jumpUrlMessages["置顶评论"] = {"是否为商品链接": false};
@@ -104,7 +105,7 @@ class AdDetector {
             jumpUrlMessage["平台名称"] = (jumpUrlDict as any).app_name;
           }
           if ((jumpUrlDict as any)?.title !== ""){
-            jumpUrlMessage["商品标题"] = (jumpUrlDict as any).title;
+            jumpUrlMessage["链接标题"] = (jumpUrlDict as any).title;
           }
           jumpUrlMessages[jumpUrl] = jumpUrlMessage;
         }
@@ -172,7 +173,7 @@ class AdDetector {
                   })).filter((item: any) => item.content) // 过滤掉空内容
                 };
               } 
-              console.log('【VideoAdGuard】音频字幕数据已生成，条目数:', Object.keys(captions).length);
+              console.log('【VideoAdGuard】音频字幕数据已生成', {captions});
             } else {
               console.log('【VideoAdGuard】音频处理和识别失败');
             }
@@ -729,11 +730,32 @@ window.addEventListener('load', () => AdDetector.analyze());
 
 // 添加 URL 变化监听
 let lastUrl = location.href;
+let lastBvid: string | null = null;
+
+// 提取BV号的辅助函数
+const extractBvidFromUrl = (url: string): string | null => {
+  const pathMatch = url.match(/BV[\w]+/);
+  if (pathMatch) return pathMatch[0];
+
+  const urlObj = new URL(url);
+  const bvid = urlObj.searchParams.get('bvid');
+  return bvid;
+};
+
 new MutationObserver(() => {
   const url = location.href;
   if (url !== lastUrl) {
+    const currentBvid = extractBvidFromUrl(url);
+    const previousBvid = extractBvidFromUrl(lastUrl);
+
     lastUrl = url;
-    console.log('【VideoAdGuard】URL changed:', url);
-    AdDetector.analyze();
+
+    // 只有当BV号发生变化时才触发检测逻辑
+    if (currentBvid !== previousBvid) {
+      lastBvid = currentBvid;
+      AdDetector.analyze();
+    } else {
+      console.log('【VideoAdGuard】URL changed but BV unchanged, skipping detection:', url);
+    }
   }
 }).observe(document, { subtree: true, childList: true });
