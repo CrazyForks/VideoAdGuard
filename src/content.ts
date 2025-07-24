@@ -58,7 +58,7 @@ class AdDetector {
       const settings = await chrome.storage.local.get(['enableExtension']);
       if (!settings.enableExtension) {
         console.log('【VideoAdGuard】插件已禁用，跳过广告检测');
-        this.adDetectionResult = '插件已禁用';
+        this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') +'插件已禁用';
         return;
       }
 
@@ -77,7 +77,7 @@ class AdDetector {
         this.adTimeRanges = cachedResult.adTimeRanges;
 
         if (cachedResult.exist && cachedResult.adTimeRanges.length > 0) {
-          this.adDetectionResult = `发现${cachedResult.adTimeRanges.length}处广告（缓存）：${
+          this.adDetectionResult = this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + `发现${cachedResult.adTimeRanges.length}处广告（缓存）：${
             cachedResult.adTimeRanges.map(([start, end]) => `${this.second2time(start)}~${this.second2time(end)}`).join(' | ')
           }`;
 
@@ -96,10 +96,10 @@ class AdDetector {
             }
           }
         } else {
-          this.adDetectionResult = '无广告内容（缓存）';
+          this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '无广告内容（缓存）';
         }
 
-        console.log('【VideoAdGuard】缓存检测结果:', this.adDetectionResult);
+        console.log('【VideoAdGuard】缓存检测结果');
         return;
       }
       
@@ -110,7 +110,7 @@ class AdDetector {
       const isUPWhitelisted = await WhitelistService.isWhitelisted(videoInfo.owner.mid.toString());
       if (isUPWhitelisted) {
         console.log('【VideoAdGuard】当前UP主在白名单中，跳过广告检测');
-        this.adDetectionResult = 'UP主在白名单中，跳过检测';
+        this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + 'UP主在白名单中，跳过检测';
         return;
       }
 
@@ -211,7 +211,8 @@ class AdDetector {
               console.log('【VideoAdGuard】音频处理和识别失败');
             }
           } catch (error) {
-            console.log('【VideoAdGuard】视频流信息获取失败:', error);
+            console.log('【VideoAdGuard】音频识别失败:', error);
+            this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '音频分析失败：' + (error as Error).message;
           }
         } else {
           console.log('【VideoAdGuard】音频识别功能未启用');
@@ -220,7 +221,7 @@ class AdDetector {
         // 如果最终没有获取到任何字幕数据
         if (Object.keys(captions).length === 0) {
           console.log('【VideoAdGuard】当前视频无字幕且无法进行音频识别，无法检测');
-          this.adDetectionResult = '当前视频无字幕，无法检测';
+          this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '当前视频无字幕，无法检测';
           return;
         }
       }
@@ -296,10 +297,9 @@ class AdDetector {
         }
         const second_lists = this.index2second(mergedIndexLists, captionsData.body);
         this.adTimeRanges = second_lists;
-        this.adDetectionResult = `发现${second_lists.length}处广告：${
+        this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + `发现${second_lists.length}处广告：${
           second_lists.map(([start, end]) => `${this.second2time(start)}~${this.second2time(end)}`).join(' | ')
         }`;
-        console.log('【VideoAdGuard】检测到广告片段:', JSON.stringify(this.adDetectionResult));
 
         // 保存检测结果到缓存
         await CacheService.saveDetectionResult(
@@ -343,7 +343,7 @@ class AdDetector {
         
       } else {
         console.log('【VideoAdGuard】无广告内容');
-        this.adDetectionResult = '无广告内容';
+        this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '无广告内容';
         this.removeAutoSkipListener();
 
         // 保存无广告结果到缓存
@@ -351,8 +351,8 @@ class AdDetector {
       }
 
     } catch (error) {
-      console.error('【VideoAdGuard】分析失败:', error);
-      this.adDetectionResult = '分析失败：' + (error as Error).message;
+      console.error('【VideoAdGuard】AI分析失败:', error);
+      this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + 'AI分析失败：' + (error as Error).message;
       this.removeAutoSkipListener();
     }
   }

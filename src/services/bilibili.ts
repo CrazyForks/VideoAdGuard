@@ -23,7 +23,7 @@ export class BilibiliService {
   }
 
   public static async getVideoInfo(bvid: string) {
-    console.log('【VideoAdGuard】[BilibiliService] Getting video info for bvid:', bvid);
+    console.log('【VideoAdGuard】[BilibiliService] Getting video info');
     const data = await this.fetchWithCookie(
       'https://api.bilibili.com/x/web-interface/view',
       { bvid: bvid }
@@ -33,7 +33,7 @@ export class BilibiliService {
   }
 
   public static async getComments(bvid: string) {
-    console.log('【VideoAdGuard】[BilibiliService] Getting comments for bvid:', bvid);
+    console.log('【VideoAdGuard】[BilibiliService] Getting comments');
     const data = await this.fetchWithCookie(
       'https://api.bilibili.com/x/v2/reply',
       { oid: bvid, type: 1 }
@@ -43,7 +43,7 @@ export class BilibiliService {
   }
 
   public static async getTopComments(bvid: string) {
-    console.log('【VideoAdGuard】[BilibiliService] Getting top comments for bvid:', bvid);
+    console.log('【VideoAdGuard】[BilibiliService] Getting top comments');
     const data = await this.fetchWithCookie(
       'https://api.bilibili.com/x/v2/reply',
       { oid: bvid, type: 1}
@@ -55,7 +55,7 @@ export class BilibiliService {
   }
 
   public static async getPlayerInfo(bvid: string, cid: number) {
-    console.log('【VideoAdGuard】[BilibiliService] Getting player info for bvid:', bvid, 'cid:', cid);
+    console.log('【VideoAdGuard】[BilibiliService] Getting player info');
     const params = { bvid: bvid, cid: cid};
     const signedParams = await WbiUtils.encWbi(params);
     const data = await this.fetchWithCookie(
@@ -80,7 +80,7 @@ export class BilibiliService {
    * @returns UP主信息，包含uid和name
    */
   public static async getUpInfo(uid: string) {
-    console.log('【VideoAdGuard】[BilibiliService] Getting UP info for uid:', uid);
+    console.log('【VideoAdGuard】[BilibiliService] Getting UP info');
     const params = { mid: uid };
     const signedParams = await WbiUtils.encWbi(params);
     const data = await this.fetchWithCookie(
@@ -101,7 +101,7 @@ export class BilibiliService {
    * @returns 视频流信息，包含播放地址等
    */
   public static async getPlayUrl(bvid: string, cid: number) {
-    console.log('【VideoAdGuard】[BilibiliService] Getting video url for bvid:', bvid, 'cid:', cid);
+    console.log('【VideoAdGuard】[BilibiliService] Getting video url');
     const params = { bvid: bvid, cid: cid, fnval: 16 };
     const signedParams = await WbiUtils.encWbi(params);
     const data = await this.fetchWithCookie(
