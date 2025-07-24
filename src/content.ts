@@ -2,17 +2,16 @@ import { BilibiliService } from './services/bilibili';
 import { AIService } from './services/ai';
 import { WhitelistService } from './services/whitelist';
 import { AudioService } from './services/audio';
+import { CacheService } from './services/cache';
 
 class AdDetector {
   public static adDetectionResult: string | null = null; // 状态存储
-  public static audioAdDetectionResult: string | null = null; // 音频广告检测结果
   private static adTimeRanges: number[][] = []; // 存储广告时间段
   private static validIndexLists: number[][] = []; // 存储原始广告索引区间
   private static timeUpdateListener: (() => void) | null = null; // 用于存储 timeupdate 监听器的引用
   private static adMarkerLayer: HTMLElement | null = null; // 添加标记层引用
   private static skipNotificationElement: HTMLElement | null = null; // 跳过提示元素引用
   private static skipButtonElement: HTMLElement | null = null; // 跳过按钮元素引用
-  private static lastSkippedAdRange: number[] | null = null; // 存储最后跳过的广告区间 [start, end]
   private static skipNotificationTimeout: number | null = null; // 跳过提示的延时器
 
   private static async getCurrentBvid(): Promise<string> {
@@ -31,10 +30,8 @@ class AdDetector {
   private static resetState() {
     // 重置所有静态变量
     this.adDetectionResult = null;
-    this.audioAdDetectionResult = null;
     this.adTimeRanges = [];
     this.validIndexLists = [];
-    this.lastSkippedAdRange = null;
 
     // 清理延时器
     if (this.skipNotificationTimeout) {
@@ -64,11 +61,47 @@ class AdDetector {
         this.adDetectionResult = '插件已禁用';
         return;
       }
-      
+
       // 在分析开始时先重置状态
       this.resetState();
 
       const bvid = await this.getCurrentBvid();
+
+      // 清理过期缓存
+      await CacheService.cleanExpiredCache();
+
+      // 先查找缓存
+      const cachedResult = await CacheService.getDetectionResult(bvid);
+      if (cachedResult) {
+        console.log('【VideoAdGuard】使用缓存的检测结果');
+        this.adTimeRanges = cachedResult.adTimeRanges;
+
+        if (cachedResult.exist && cachedResult.adTimeRanges.length > 0) {
+          this.adDetectionResult = `发现${cachedResult.adTimeRanges.length}处广告（缓存）：${
+            cachedResult.adTimeRanges.map(([start, end]) => `${this.second2time(start)}~${this.second2time(end)}`).join(' | ')
+          }`;
+
+          // 获取video元素用于后续操作
+          const videoElement = document.querySelector("video");
+          if (videoElement) {
+            // 注入跳过按钮和标记层
+            this.createSkipButton(videoElement);
+            this.createAdMarkers(videoElement);
+
+            // 检查是否需要自动跳过
+            const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
+            if (autoSkipAd) {
+              console.log("【VideoAdGuard】设置自动跳过监听器（缓存结果）");
+              this.setupAutoSkip(videoElement);
+            }
+          }
+        } else {
+          this.adDetectionResult = '无广告内容（缓存）';
+        }
+
+        console.log('【VideoAdGuard】缓存检测结果:', this.adDetectionResult);
+        return;
+      }
       
       // 获取视频信息
       const videoInfo = await BilibiliService.getVideoInfo(bvid);
@@ -268,6 +301,14 @@ class AdDetector {
         }`;
         console.log('【VideoAdGuard】检测到广告片段:', JSON.stringify(this.adDetectionResult));
 
+        // 保存检测结果到缓存
+        await CacheService.saveDetectionResult(
+          bvid,
+          true,
+          result.good_name || [],
+          second_lists
+        );
+
         // 首先获取video元素和总时长
         const videoElement = document.querySelector("video");
         if (!videoElement) {
@@ -304,6 +345,9 @@ class AdDetector {
         console.log('【VideoAdGuard】无广告内容');
         this.adDetectionResult = '无广告内容';
         this.removeAutoSkipListener();
+
+        // 保存无广告结果到缓存
+        await CacheService.saveDetectionResult(bvid, false, [], []);
       }
 
     } catch (error) {
@@ -681,9 +725,6 @@ class AdDetector {
               videoElement.currentTime = targetTime;
               console.log(`【VideoAdGuard】已自动跳过到 ${this.second2time(targetTime)}`);
 
-              // 存储最后跳过的广告区间，用于跳回功能
-              this.lastSkippedAdRange = [start, end];
-
               // 将当前区间标记为已跳过
               skippedRanges.add(rangeKey);
 
@@ -730,7 +771,6 @@ window.addEventListener('load', () => AdDetector.analyze());
 
 // 添加 URL 变化监听
 let lastUrl = location.href;
-let lastBvid: string | null = null;
 
 // 提取BV号的辅助函数
 const extractBvidFromUrl = (url: string): string | null => {
@@ -752,7 +792,7 @@ new MutationObserver(() => {
 
     // 只有当BV号发生变化时才触发检测逻辑
     if (currentBvid !== previousBvid) {
-      lastBvid = currentBvid;
+      console.log('【VideoAdGuard】URL changed with different BV:', url, 'Previous BV:', previousBvid, 'Current BV:', currentBvid);
       AdDetector.analyze();
     } else {
       console.log('【VideoAdGuard】URL changed but BV unchanged, skipping detection:', url);
