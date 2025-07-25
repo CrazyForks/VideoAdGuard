@@ -149,7 +149,7 @@ class AdDetector {
       const topComments = await BilibiliService.getTopComments(bvid);
       const topComment = topComments?.message || null;
       const jumpUrls = topComments?.jump_url || null;
-      const jumpUrlMessages: Record<string, Record<string, any>> = {};
+      let jumpUrlMessages: Record<string, Record<string, any>> = {};
       if(topComment && (Object.keys(jumpUrls).length===0 || jumpUrls===null)){
         jumpUrlMessages["置顶评论"] = {"是否有链接": false};
       }
@@ -160,7 +160,7 @@ class AdDetector {
             continue;
           }
           const jumpUrlMessage: Record<string, any> = {};
-          if((jumpUrlDict as any)?.extra?.goods_item_id){
+          if((jumpUrlDict as any)?.extra?.goods_item_id || (jumpUrlDict as any)?.pc_url !== ""){
             jumpUrlMessage["是否为官方商品链接"] = true
           }
           else{
@@ -199,9 +199,16 @@ class AdDetector {
             }
           }
         }
+        // 如果没有检测到广告条件，则直接返回
+        if (!hasAdCondition) {
+          console.log('【VideoAdGuard】限制模式：未检测到广告条件，跳过大模型分析');
+          this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '未检测到广告条件';
+          this.removeAutoSkipListener();
+          // 保存无广告结果到缓存
+          // await CacheService.saveDetectionResult(bvid, false, [], []);
+          return;
+        }
       }
-
-
 
       const playerInfo = await BilibiliService.getPlayerInfo(bvid, videoInfo.cid);
 
@@ -287,26 +294,16 @@ class AdDetector {
 
       // 限制模式处理逻辑
       let rawResult;
-      if (isRestrictedMode) {
-        if (hasAdCondition) {
-          console.log('【VideoAdGuard】限制模式：检测到可能存在广告，调用大模型进行详细分析...');
-          console.log('【VideoAdGuard】限制模式：预提取的商品名称:', good_name);
-          rawResult = await AIService.detectAdRestricted({
-            title: videoInfo.title,
-            topComment: topComment,
-            addtionMessages: jumpUrlMessages,
-            captions: captions,
-            goodNames: good_name
-          });
-        } else {
-          console.log('【VideoAdGuard】限制模式：未检测到广告条件，跳过大模型分析');
-          // 直接返回无广告结果
-          rawResult = JSON.stringify({
-            exist: false,
-            good_name: [],
-            index_lists: []
-          });
-        }
+      if (isRestrictedMode && hasAdCondition) {
+        console.log('【VideoAdGuard】限制模式：检测到可能存在广告，调用大模型进行详细分析...');
+        console.log('【VideoAdGuard】限制模式：预提取的商品名称:', good_name);
+        rawResult = await AIService.detectAdRestricted({
+          title: videoInfo.title,
+          topComment: topComment,
+          addtionMessages: jumpUrlMessages,
+          captions: captions,
+          goodNames: good_name
+        });
       } else {
         // 正常模式：使用统一的captions数据进行AI分析
         console.log('【VideoAdGuard】开始AI广告检测分析...');
@@ -323,6 +320,8 @@ class AdDetector {
       try {
         const cleanJson = typeof rawResult === 'string'
           ? rawResult
+              .replace(/\/\/.*$/gm, '')    // 删除单行注释 //注释内容
+              .replace(/\/\*[\s\S]*?\*\//g, '') // 删除多行注释 /* 注释内容 */
               .replace(/\s+/g, '')     // 删除所有空白字符
               .replace(/\\/g, '')
               .replace(/json/g, '')
@@ -385,12 +384,7 @@ class AdDetector {
         }`;
 
         // 保存检测结果到缓存
-        await CacheService.saveDetectionResult(
-          bvid,
-          true,
-          result.good_name || [],
-          second_lists
-        );
+        // await CacheService.saveDetectionResult(bvid, true, result.good_name || [], second_lists);
 
         // 首先获取video元素和总时长
         const videoElement = document.querySelector("video");
@@ -430,7 +424,7 @@ class AdDetector {
         this.removeAutoSkipListener();
 
         // 保存无广告结果到缓存
-        await CacheService.saveDetectionResult(bvid, false, [], []);
+        // await CacheService.saveDetectionResult(bvid, false, [], []);
       }
 
     } catch (error) {

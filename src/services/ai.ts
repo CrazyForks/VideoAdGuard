@@ -10,7 +10,7 @@ export class AIService {
         {
           role: "system",
           content:
-            "你是一个敏感的视频观看者，能根据视频的连贯性改变和宣传推销类内容，找出视频中可能存在的植入广告。内容如果和主题相关，即使是推荐/评价也可能只是分享而不是广告，重点要看置顶评论和附加信息中有没有商品链接。",
+            "你是一个专业的视频内容分析师，专门识别视频中的植入广告。只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告。",
         },
         {
           role: "user",
@@ -200,18 +200,28 @@ export class AIService {
     addtionMessages: Record<string, Record<string, any>> | null;
     captions: Record<number, string>;
   }): string {
-    const prompt = `视频的标题和置顶评论如下，可供参考判断是否有广告。
-    视频标题：${videoInfo.title}
-    置顶评论：${videoInfo.topComment || '无'}，如果没有置顶评论，认为没有广告。
-    附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}，如果置顶评论中有链接，且是商品链接，那么广告商品已经确定，只需要找出介绍商品的部分（介绍其他产品认为是用于对比，不用管）；如果不是商品链接，认为没有广告。
-    下面我会给你这个视频的字幕字典，形式为 index: context. 如果有广告，请你完整地找出其中的广告，返回json格式的数据。注意要返回一整段的广告，从广告的引入到结尾重新转折回到视频内容的所有广告部分。
-    字幕内容：${JSON.stringify(videoInfo.captions)}
-    请以json格式输出，示例如下：
-    {
-      "exist": <bool. true表示存在广告，false表示不存在广告>,
-      "good_name": <list[string]. 广告的商品名称，可以参考置顶评论和附加信息，有多少个链接一般视频就会推销多少个商品>,
-      "index_lists": <list[list[int]]. 二维数组，行数表示广告的段数。每一行是长度为2的数组[start, end]，表示一段完整广告的开头结尾，start和end是字幕的index。>
-    }`;
+    const prompt = `你需要分析视频内容，识别其中的植入广告。
+
+视频信息：
+标题：${videoInfo.title}
+置顶评论：${videoInfo.topComment || '无'}
+附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
+
+检测规则：
+1. 只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告
+2. 纯粹的产品介绍、评测、对比，如果没有明确的购买引导，不认定为广告
+3. 必须有明确的商品链接或购买渠道信息才能认定为广告
+4. 如果置顶评论中没有商品链接，则更倾向于认定为无广告
+5. 广告内容必须与置顶评论或附加信息中的商品链接相对应
+
+字幕内容：${JSON.stringify(videoInfo.captions)}
+
+请严格按照检测规则进行判断，以json格式输出：
+{
+  "exist": <bool. true表示存在广告，false表示不存在广告>,
+  "good_name": <list[string]. 广告的商品名称>,
+  "index_lists": <list[list[int]]. 二维数组，每一行是[start, end]，表示一段完整广告的开头结尾字幕index>
+}`;
     console.log('【VideoAdGuard】构建提示词成功:', {prompt});
     return prompt;
   }
@@ -231,30 +241,30 @@ export class AIService {
       ? videoInfo.goodNames.join('、')
       : '无';
 
-    const prompt = `你正在进行限制模式下的广告检测，需要更加谨慎和精确地判断广告内容。
+const prompt = `以下视频内容存在广告，请你根据预提取的商品名称找出广告内容。
 
-    视频信息：
-    标题：${videoInfo.title}
-    置顶评论：${videoInfo.topComment || '无'}
-    附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
-    预提取的商品名称：${goodNamesText}
+视频信息：
+标题：${videoInfo.title}
+置顶评论：${videoInfo.topComment || '无'}
+附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
+预提取的商品名称：${goodNamesText}
 
-    限制模式检测规则：
-    1. 只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告
-    2. 纯粹的产品介绍、评测、对比，如果没有明确的购买引导，不认定为广告
-    3. 必须有明确的商品链接或购买渠道信息才能认定为广告
-    4. 如果置顶评论中没有商品链接，则更倾向于认定为无广告
-    5. 广告内容必须与置顶评论或附加信息中的商品链接相对应
-    6. 重点关注预提取的商品名称，在字幕中寻找与这些商品相关的推广内容
+限制模式检测规则：
+1. 只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告
+2. 纯粹的产品介绍、评测、对比，如果没有明确的购买引导，不认定为广告
+3. 必须有明确的商品链接或购买渠道信息才能认定为广告
+4. 如果置顶评论中没有商品链接，则更倾向于认定为无广告
+5. 广告内容必须与置顶评论或附加信息中的商品链接相对应
+6. 重点关注预提取的商品名称，在字幕中寻找与这些商品相关的推广内容
 
-    字幕内容：${JSON.stringify(videoInfo.captions)}
+字幕内容：${JSON.stringify(videoInfo.captions)}
 
-    请严格按照限制模式规则进行判断，特别关注预提取的商品名称，以json格式输出：
-    {
-      "exist": <bool. true表示存在广告，false表示不存在广告>,
-      "good_name": <list[string]. 广告的商品名称，优先使用预提取的商品名称>,
-      "index_lists": <list[list[int]]. 二维数组，每一行是[start, end]，表示一段完整广告的开头结尾字幕index>
-    }`;
+请严格按照限制模式规则进行判断，特别关注预提取的商品名称，以json格式输出：
+{
+  "exist": <bool. true表示存在广告，false表示不存在广告>,
+  "good_name": <list[string]. 广告的商品名称>,
+  "index_lists": <list[list[int]]. 二维数组，每一行是[start, end]，表示一段完整广告的开头结尾字幕index>
+}`;
     console.log('【VideoAdGuard】限制模式构建提示词成功:', {prompt});
     return prompt;
   }
@@ -263,7 +273,7 @@ export class AIService {
    * 根据链接标题提取商品名称
    */
   public static async extractProductName(linkTitle: string): Promise<string> {
-    console.log("【VideoAdGuard】开始提取商品名称:", linkTitle);
+    console.log("【VideoAdGuard】开始提取商品名称");
     const url = await this.getApiUrl();
     const model = await this.getModel();
     const enableLocalOllama = await this.getEnableLocalOllama();
@@ -273,11 +283,11 @@ export class AIService {
       messages: [
         {
           role: "system",
-          content: "你是一个商品名称提取专家。根据给定的链接标题，提取出其中的核心商品名称。只返回商品名称，不要其他内容。"
+          content: "你是商品名称提取专家。从链接标题中提取核心商品名称，去除修饰词、营销词汇，只保留商品的本质名称。"
         },
         {
           role: "user",
-          content: `请从以下链接标题中提取商品名称：${linkTitle}`
+          content: `链接标题：${linkTitle}\n\n请提取其中的核心商品名称，只返回商品名称，不要解释。`
         }
       ],
       temperature: 0,
@@ -328,25 +338,21 @@ export class AIService {
 
   private static async getApiUrl(): Promise<string> {
     const result = await chrome.storage.local.get('apiUrl');
-    console.log('【VideoAdGuard】API地址状态:', result.apiUrl? '已设置' : '未设置');
     return result.apiUrl || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
   }
 
   private static async getApiKey(): Promise<string | null> {
     const result = await chrome.storage.local.get('apiKey');
-    console.log('【VideoAdGuard】API密钥状态:', result.apiKey ? '已设置' : '未设置');
     return result.apiKey || null;
   }
 
   private static async getModel(): Promise<string> {
     const result = await chrome.storage.local.get('model');
-    console.log('【VideoAdGuard】模型名称状态:', result.model ? '已设置' : '未设置');
     return result.model || 'glm-4-flash';
   }
 
   private static async getEnableLocalOllama(): Promise<boolean> {
     const result = await chrome.storage.local.get("enableLocalOllama");
-    console.log("【VideoAdGuard】本地Ollama设置状态:", result.enableLocalOllama);
     return result.enableLocalOllama || false;
   }
 }
