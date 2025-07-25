@@ -352,6 +352,10 @@ class AdDetector {
       if (result.exist) {
         // 过滤掉不合法的索引区间 (end < start)
         this.validIndexLists = result.index_lists.filter((item: number[]) => item[1] >= item[0]);
+        // 过滤掉重复的索引区间
+        this.validIndexLists = this.validIndexLists.filter((item: number[], index: number, self: number[][]) =>
+          index === self.findIndex((t) => t[0] === item[0] && t[1] === item[1])
+        );
 
         // 合并相交、相邻或间隔为1的广告索引区间
         let mergedIndexLists: number[][] = [];
