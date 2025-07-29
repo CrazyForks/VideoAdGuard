@@ -17,6 +17,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const toggleGroqPasswordBtn = document.getElementById("toggleGroqApiKey") as HTMLInputElement;
   const enableAudioTranscriptionCheckbox = document.getElementById("enableAudioTranscription") as HTMLInputElement;
 
+  // API URL 下拉框相关元素
+  const apiUrlDropdown = document.getElementById("apiUrlDropdown") as HTMLButtonElement;
+  const apiUrlDropdownMenu = document.getElementById("apiUrlDropdownMenu") as HTMLDivElement;
+
   // 自动保存函数
   async function autoSaveSettings() {
     const apiUrl = apiUrlInput.value.trim();
@@ -64,13 +68,58 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 页面卸载时自动保存
   window.addEventListener('beforeunload', autoSaveSettings);
-  
+
   // 页面隐藏时自动保存（用户切换标签页或关闭popup）
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       autoSaveSettings();
     }
   });
+
+  // API URL 下拉框功能
+  function initApiUrlDropdown() {
+    // 切换下拉菜单显示/隐藏
+    apiUrlDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      apiUrlDropdownMenu.classList.toggle('show');
+    });
+
+    // 点击下拉项时选择API URL
+    apiUrlDropdownMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const target = e.target as HTMLElement;
+
+      // 处理注册链接点击
+      if (target.classList.contains('register-link')) {
+        return; // 让链接正常跳转
+      }
+
+      // 查找最近的dropdown-item
+      const dropdownItem = target.closest('.dropdown-item') as HTMLElement;
+      if (dropdownItem) {
+        const url = dropdownItem.getAttribute('data-url');
+        if (url) {
+          apiUrlInput.value = url;
+          apiUrlDropdownMenu.classList.remove('show');
+          // 触发自动保存
+          autoSaveSettings();
+        }
+      }
+    });
+
+    // 点击其他地方时关闭下拉菜单
+    document.addEventListener('click', () => {
+      apiUrlDropdownMenu.classList.remove('show');
+    });
+
+    // 阻止输入框点击时关闭下拉菜单
+    apiUrlInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+
+  // 初始化下拉框功能
+  initApiUrlDropdown();
 
 
   if (togglePasswordBtn && apiKeyInput) {

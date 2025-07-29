@@ -77,17 +77,18 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 | 模型名称              | 测试结果 | API地址填写示例                                                          | API密钥官网                                                                               |
 | --------------------- | -------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| 智谱AI (GLM系列)      | ✅       | https://open.bigmodel.cn/api/paas/v4/chat/completions                    | [智谱AI](https://bigmodel.cn/)                                                               |
-| DeepSeek              | ✅       | https://api.deepseek.com/chat/completions                                | [DeepSeek](https://deepseek.com/)                                                            |
+| 智谱AI (GLM系列)      | ✅       | https://open.bigmodel.cn/api/paas/v4/chat/completions                    | [智谱AI](https://bigmodel.cn/usercenter/proj-mgmt/apikeys)                                   |
+| DeepSeek              | ✅       | https://api.deepseek.com/chat/completions                                | [DeepSeek](https://platform.deepseek.com/api_keys)                                           |
 | 硅基流动              | ✅       | https://api.siliconflow.com/v1/chat/completions                          | [硅基流动](https://cloud.siliconflow.cn/i/VWOdVvvM)                                          |
 | OpenAI (GPT系列)      | ✅       | https://api.openai.com/v1/chat/completions                               | [OpenAI](https://openai.com/api/) / [国内直连镜像站](https://app.requesty.ai/join?ref=d9bb6cf2) |
 | 阿里云 (通义千问系列) | ✅       | https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions       | [通义千问](https://bailian.console.aliyun.com/)                                              |
 | Google Gemini         | ✅       | https://generativelanguage.googleapis.com/v1beta/openai/chat/completions | [Gemini](https://ai.google.dev/) / [国内直连镜像站](https://app.requesty.ai/join?ref=d9bb6cf2)  |
 | Grok                  | ✅       | https://api.x.ai/v1/chat/completions                                     | [Grok](https://console.x.ai/)                                                                |
 | 本地Ollama            | ✅       | http://localhost:11434/api/chat                                          | 因为跨域请求，需要设置环境变量 OLLAMA_ORIGINS = *                                         |
-| 字节跳动 (豆包系列)   | ❓       |                                                                          | [豆包](https://www.volcengine.com/)                                                          |
+| 云雾API               | ✅       | https://yunwu.ai/v1/chat/completions                                     | [yunwu](https://yunwu.ai/register?aff=btu9)                                                  |
 | Anthropic Claude      | ❓       |                                                                          | [Claude](https://console.anthropic.com/)                                                     |
 | MiniMax               | ❓       |                                                                          | [MiniMax](https://api.minimax.chat/)                                                         |
+| 字节跳动 (豆包系列)   | ❓       |                                                                          | [豆包](https://www.volcengine.com/)                                                          |
 
 ### 音频识别API（可选）
 

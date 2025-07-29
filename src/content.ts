@@ -205,7 +205,7 @@ class AdDetector {
           this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '未检测到广告条件';
           this.removeAutoSkipListener();
           // 保存无广告结果到缓存
-          // await CacheService.saveDetectionResult(bvid, false, [], []);
+          await CacheService.saveDetectionResult(bvid, false, [], []);
           return;
         }
       }
@@ -332,7 +332,7 @@ class AdDetector {
 
         // 验证返回数据格式
         if (typeof result.exist !== 'boolean' || !Array.isArray(result.index_lists)) {
-          throw new Error('返回数据格式错误');
+          throw new Error('返回数据格式错误: '+ {cleanJson});
         }
 
         // 验证 index_lists 格式
@@ -388,7 +388,7 @@ class AdDetector {
         }`;
 
         // 保存检测结果到缓存
-        // await CacheService.saveDetectionResult(bvid, true, result.good_name || [], second_lists);
+        await CacheService.saveDetectionResult(bvid, true, result.good_name || [], second_lists);
 
         // 首先获取video元素和总时长
         const videoElement = document.querySelector("video");
@@ -428,7 +428,7 @@ class AdDetector {
         this.removeAutoSkipListener();
 
         // 保存无广告结果到缓存
-        // await CacheService.saveDetectionResult(bvid, false, [], []);
+        await CacheService.saveDetectionResult(bvid, false, [], []);
       }
 
     } catch (error) {

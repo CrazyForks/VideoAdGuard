@@ -28,7 +28,82 @@
   <div class="card api-settings-card">
     <div class="form-group apiUrl-field">
       <label for="apiUrl">API 地址:</label>
-      <input type="text" id="apiUrl" placeholder="请输入API地址" value="https://open.bigmodel.cn/api/paas/v4/chat/completions">
+      <div class="api-url-container">
+        <input type="text" id="apiUrl" placeholder="请输入API地址" value="https://open.bigmodel.cn/api/paas/v4/chat/completions">
+        <button type="button" class="dropdown-toggle" id="apiUrlDropdown">▼</button>
+        <div class="dropdown-menu" id="apiUrlDropdownMenu">
+          <div class="dropdown-item" data-url="https://open.bigmodel.cn/api/paas/v4/chat/completions" data-provider="智谱AI">
+            <div class="provider-info">
+              <span class="provider-name">智谱AI</span>
+              <a href="https://bigmodel.cn/usercenter/proj-mgmt/apikeys" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://open.bigmodel.cn/api/paas/v4/chat/completions</div>
+          </div>
+          <div class="dropdown-item" data-url="https://api.openai.com/v1/chat/completions" data-provider="OpenAI">
+            <div class="provider-info">
+              <span class="provider-name">OpenAI</span>
+              <a href="https://openai.com/api/" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://api.openai.com/v1/chat/completions</div>
+          </div>
+          <div class="dropdown-item" data-url="https://api.deepseek.com/chat/completions" data-provider="DeepSeek">
+            <div class="provider-info">
+              <span class="provider-name">DeepSeek</span>
+              <a href="https://platform.deepseek.com/api_keys" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://api.deepseek.com/chat/completions</div>
+          </div>
+          <div class="dropdown-item" data-url="https://api.siliconflow.com/v1/chat/completions" data-provider="硅基流动">
+            <div class="provider-info">
+              <span class="provider-name">硅基流动</span>
+              <a href="https://cloud.siliconflow.cn/i/VWOdVvvM" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://api.siliconflow.com/v1/chat/completions</div>
+          </div>
+          <div class="dropdown-item" data-url="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions" data-provider="阿里云">
+            <div class="provider-info">
+              <span class="provider-name">阿里云 (通义千问系列)</span>
+              <a href="https://bailian.console.aliyun.com/" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions</div>
+          </div>
+          <div class="dropdown-item" data-url="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" data-provider="Google">
+            <div class="provider-info">
+              <span class="provider-name">Gemini</span>
+              <a href="https://aistudio.google.com/" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://generativelanguage.googleapis.com/v1beta/openai/chat/completions</div>
+          </div>
+          <div class="dropdown-item" data-url="https://api.x.ai/v1/chat/completions" data-provider="Grok">
+            <div class="provider-info">
+              <span class="provider-name">Grok</span>
+              <a href="https://console.x.ai/" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://api.x.ai/v1/chat/completions</div>
+          </div>
+          <div class="dropdown-item" data-url="http://localhost:11434/api/chat" data-provider="Ollama">
+            <div class="provider-info">
+              <span class="provider-name">Ollama</span>
+              <a href="https://ollama.com/" target="_blank" class="register-link">下载</a>
+            </div>
+            <div class="api-url">http://localhost:11434/api/chat</div>
+          </div>
+          <div class="dropdown-item" data-url="https://router.requesty.ai/v1/chat/completions" data-provider="Requesty API">
+            <div class="provider-info">
+              <span class="provider-name">Requesty API</span>
+              <a href="https://app.requesty.ai/join?ref=d9bb6cf2" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://router.requesty.ai/v1/chat/completions</div>
+          </div>
+          <div class="dropdown-item" data-url="https://yunwu.ai/v1/chat/completions" data-provider="云雾API">
+            <div class="provider-info">
+              <span class="provider-name">云雾API</span>
+              <a href="https://yunwu.ai/register?aff=btu9" target="_blank" class="register-link">注册</a>
+            </div>
+            <div class="api-url">https://yunwu.ai/v1/chat/completions</div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="form-group apiKey-field">
       <label for="apiKey">API 密钥:</label>
@@ -53,12 +128,15 @@
   <div class="card groq-settings-card">
     <div class="form-group enableAudioTranscription-field">
       <label for="enableAudioTranscription">启用语音识别</label>
+      <div class="groq-register-link">
+        <a href="https://console.groq.com/keys" target="_blank" class="register-link">注册</a>
+      </div>
       <input type="checkbox" id="enableAudioTranscription">
     </div>
     <div class="form-group groqApiKey-field">
       <label for="groqApiKey">Groq 密钥：</label>
       <div class="input-with-icon">
-        <input type="password" id="groqApiKey" placeholder="刚需非中国（包括港澳台）网络">
+        <input type="password" id="groqApiKey" placeholder="刚需非大陆、非港澳台网络">
         <span class="toggle-password" id="toggleGroqApiKey">
           <svg class="eye-icon eye-open" viewBox="0 0 24 24" width="16" height="16">
             <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"></path>
@@ -210,13 +288,126 @@
       font-weight: normal;
     }
 
-    .apiUrl-field input[type="text"] {
+    /* API URL 容器样式 */
+    .api-url-container {
+      position: relative;
       flex-grow: 1;
-      padding: 8px;
+      width: calc(100% - 90px);
+    }
+
+    .api-url-container input[type="text"] {
+      width: 100%;
+      padding: 8px 35px 8px 8px;
       box-sizing: border-box;
       border: 1px solid #ccc;
       border-radius: 4px;
-      width: calc(100% - 90px); 
+    }
+
+    .dropdown-toggle {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      bottom: 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      color: #666;
+      padding: 0;
+      width: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    .dropdown-toggle:hover {
+      color: #ff6699;
+      background: none !important;
+    }
+
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    .dropdown-menu.show {
+      display: block;
+    }
+
+    .dropdown-item {
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      transition: background-color 0.2s;
+    }
+
+    .dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-item:hover {
+      background-color: #f8f9fa;
+    }
+
+    .provider-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .provider-name {
+      font-weight: 500;
+      color: #333;
+      font-size: 13px;
+    }
+
+    .register-link {
+      color: #ff6699;
+      text-decoration: none;
+      font-size: 12px;
+      padding: 2px 6px;
+      border: 1px solid #ff6699;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+
+    .register-link:hover {
+      background-color: #ff6699;
+      color: white;
+    }
+
+    .api-url {
+      font-size: 11px;
+      color: #666;
+      font-family: monospace;
+      word-break: break-all;
+      line-height: 1.3;
+    }
+
+    /* Groq 注册链接样式 */
+    .groq-register-link {
+      margin-top: 2px;
+      margin-left: 10px;
+      text-align: right;
+    }
+
+    .groq-register-link .register-link {
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 2px;
     }
 
     .model-field input[type="text"] {
