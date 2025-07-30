@@ -14,16 +14,35 @@ class AdDetector {
   private static skipButtonElement: HTMLElement | null = null; // 跳过按钮元素引用
   private static skipNotificationTimeout: number | null = null; // 跳过提示的延时器
 
-  private static async getCurrentBvid(): Promise<string> {
+  /**
+   * 从URL中提取BV号的通用方法
+   * @param url 可选，指定URL。如果不提供则使用当前页面URL
+   * @returns BV号字符串，找不到时抛出异常
+   */
+  public static getBvidFromUrl(url?: string): string {
+    const targetUrl = url || window.location.href;
+
     // 先尝试从路径中匹配
-    const pathMatch = window.location.pathname.match(/BV[\w]+/);
+    const pathMatch = targetUrl.match(/BV[\w]+/);
     if (pathMatch) return pathMatch[0];
-    
+
+    // 从路径中匹配av号
+    const avMatch = targetUrl.match(/av(\d+)/);
+    if (avMatch) {
+      const avNumber = avMatch[1];
+      // 将av号转换为BV号
+      return BilibiliService.convertAvToBv(avNumber);
+    }
+
     // 如果路径中没有，尝试从查询参数中获取
-    const urlParams = new URLSearchParams(window.location.search);
-    const bvid = urlParams.get('bvid');
-    if (bvid) return bvid;
-    
+    try {
+      const urlObj = new URL(targetUrl);
+      const bvid = urlObj.searchParams.get('bvid');
+      if (bvid) return bvid;
+    } catch (error) {
+      throw new Error('URL解析失败');
+    }
+
     throw new Error('未找到视频ID');
   }
 
@@ -97,7 +116,7 @@ class AdDetector {
       // 在分析开始时先重置状态
       this.resetState();
 
-      const bvid = await this.getCurrentBvid();
+      const bvid = this.getBvidFromUrl();
 
       // 清理过期缓存
       await CacheService.cleanExpiredCache();
@@ -853,21 +872,12 @@ window.addEventListener('load', () => AdDetector.analyze());
 // 添加 URL 变化监听
 let lastUrl = location.href;
 
-// 提取BV号的辅助函数
-const extractBvidFromUrl = (url: string): string | null => {
-  const pathMatch = url.match(/BV[\w]+/);
-  if (pathMatch) return pathMatch[0];
-
-  const urlObj = new URL(url);
-  const bvid = urlObj.searchParams.get('bvid');
-  return bvid;
-};
 
 new MutationObserver(() => {
   const url = location.href;
   if (url !== lastUrl) {
-    const currentBvid = extractBvidFromUrl(url);
-    const previousBvid = extractBvidFromUrl(lastUrl);
+    const currentBvid = AdDetector.getBvidFromUrl(url);
+    const previousBvid = AdDetector.getBvidFromUrl(lastUrl);
 
     lastUrl = url;
 
