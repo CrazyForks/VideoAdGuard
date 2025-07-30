@@ -1,6 +1,6 @@
 {
     "name": "video-ad-guard",
-    "version": "1.2.4",
+    "version": "1.2.5",
     "scripts": {
         "build": "webpack --config webpack.config.js",
         "watch": "webpack --watch --config webpack.config.js"
