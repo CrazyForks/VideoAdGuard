@@ -111,4 +111,60 @@ export class BilibiliService {
     console.log('【VideoAdGuard】[BilibiliService] video url result:', data);
     return data;
   }
+
+  /**
+   * AV号转BV号的本地算法实现
+   * @param avid AV号（可以是数字字符串或带av前缀的字符串）
+   * @returns BV号字符串
+   */
+  public static convertAvToBv(avid: string): string {
+    // 算法常量
+    const table = [...'FcwAPNKTMug3GV5Lj7EJnHpWsx4tb8haYeviqBz6rkCy12mUSDQX9RdoZf'];
+    const base = BigInt(table.length);
+    const rangeLeft = 1n;
+    const rangeRight = 2n ** 51n;
+    const xor = 23442827791579n;
+
+    let num = avid;
+
+    // 处理字符串输入，移除av前缀
+    if (typeof num === 'string') {
+      num = num.replace(/^[Aa][Vv]/u, '');
+    }
+
+    // 转换为bigint
+    let numBigInt: bigint;
+    try {
+      numBigInt = BigInt(num);
+    } catch (error) {
+      throw new Error(`Invalid AV number: ${avid}`);
+    }
+
+    // 验证输入类型和范围
+    if (!Number.isInteger(Number(num)) && typeof numBigInt !== 'bigint') {
+      throw new Error(`Invalid AV number: ${avid}`);
+    }
+
+    // 检查范围
+    if (numBigInt < rangeLeft || numBigInt >= rangeRight) {
+      throw new Error(`AV number out of range: ${avid}`);
+    }
+
+    // 执行转换算法
+    numBigInt = (numBigInt + rangeRight) ^ xor;
+    let result = [...'BV1000000000'];
+    let i = 11;
+
+    while (i > 2) {
+      result[i] = table[Number(numBigInt % base)];
+      numBigInt = numBigInt / base;
+      i -= 1;
+    }
+
+    // 字符位置交换
+    [result[3], result[9]] = [result[9], result[3]];
+    [result[4], result[7]] = [result[7], result[4]];
+
+    return result.join('');
+  }
 }
