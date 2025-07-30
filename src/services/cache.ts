@@ -8,6 +8,8 @@ export interface CacheItem {
   good_name: string[];
   /** 广告时间段 */
   adTimeRanges: number[][];
+  /** 检测结果是否可信（用于决定是否自动跳过） */
+  isDetectionConfident: boolean;
   /** 创建时间戳 */
   createdAt: number;
 }
@@ -180,6 +182,12 @@ export class CacheService {
       }
 
       console.log(`【VideoAdGuard】[Cache] 找到 ${bvid} 的有效缓存`);
+
+      // 向后兼容：如果缓存项没有isDetectionConfident字段，设置默认值
+      if (item.isDetectionConfident === undefined) {
+        item.isDetectionConfident = false;
+      }
+
       return item;
     } catch (error) {
       console.error('【VideoAdGuard】[Cache] 获取缓存失败:', error);
@@ -193,12 +201,14 @@ export class CacheService {
    * @param exist 广告是否存在
    * @param good_name 商品名称列表
    * @param adTimeRanges 广告时间段
+   * @param isDetectionConfident 检测结果是否可信
    */
   public static async saveDetectionResult(
     bvid: string,
     exist: boolean,
     good_name: string[],
-    adTimeRanges: number[][]
+    adTimeRanges: number[][],
+    isDetectionConfident: boolean = false
   ): Promise<void> {
     try {
       const cache = await CacheService.getAllCache();
@@ -208,6 +218,7 @@ export class CacheService {
         exist,
         good_name,
         adTimeRanges,
+        isDetectionConfident,
         createdAt: Date.now()
       };
 

@@ -120,9 +120,9 @@ class AdDetector {
             this.createSkipButton(videoElement);
             this.createAdMarkers(videoElement);
 
-            // 检查是否需要自动跳过
+            // 检查是否需要自动跳过（使用缓存中的可信度信息）
             const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
-            if (autoSkipAd) {
+            if (autoSkipAd && cachedResult.isDetectionConfident) {
               console.log("【VideoAdGuard】设置自动跳过监听器（缓存结果）");
               this.setupAutoSkip(videoElement);
             }
@@ -187,7 +187,7 @@ class AdDetector {
         for (const [jumpUrl, jumpUrlMessage] of Object.entries(jumpUrlMessages)){
           if (jumpUrlMessage["是否为官方商品链接"]) {
             hasAdCondition = true;
-            const ad_text = jumpUrlMessage["链接标题"];
+            const ad_text = "置顶评论：" + topComment + " 链接标题：" + jumpUrlMessage["链接标题"];
             try {
               const response = await AIService.extractProductName(ad_text);
               good_name.push(response);
@@ -205,7 +205,7 @@ class AdDetector {
           this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '未检测到广告条件';
           this.removeAutoSkipListener();
           // 保存无广告结果到缓存
-          await CacheService.saveDetectionResult(bvid, false, [], []);
+          await CacheService.saveDetectionResult(bvid, false, [], [], false);
           return;
         }
       }
@@ -387,9 +387,6 @@ class AdDetector {
           second_lists.map(([start, end]) => `${this.second2time(start)}~${this.second2time(end)}`).join(' | ')
         }`;
 
-        // 保存检测结果到缓存
-        await CacheService.saveDetectionResult(bvid, true, result.good_name || [], second_lists);
-
         // 首先获取video元素和总时长
         const videoElement = document.querySelector("video");
         if (!videoElement) {
@@ -397,17 +394,21 @@ class AdDetector {
           throw new Error('未找到视频元素');
         }
         const videoDuration = videoElement ? videoElement.duration : 0; // 获取视频总时长
-       
+
         // 计算总广告时长
         let totalAdDuration = 0;
-        if (this.adTimeRanges && this.adTimeRanges.length > 0) {
-            totalAdDuration = this.adTimeRanges.reduce((sum, [start, end]) => sum + (end - start), 0);
+        if (second_lists && second_lists.length > 0) {
+            totalAdDuration = second_lists.reduce((sum, [start, end]) => sum + (end - start), 0);
         }
 
-        const isDetectionConfident =                                     
-            this.adTimeRanges.length > 0 &&                     // 1. 确实检测到了广告时间段
+        // 计算检测结果可信度
+        const isDetectionConfident =
+            second_lists.length > 0 &&                     // 1. 确实检测到了广告时间段
             this.validIndexLists.length <= 3 &&                 // 2. 原始广告片段数量不多于3个
             totalAdDuration < (videoDuration * 0.5);            // 3. 总广告时长小于视频总时长的50%
+
+        // 保存检测结果到缓存
+        await CacheService.saveDetectionResult(bvid, true, result.good_name || [], second_lists, isDetectionConfident);
         
         // 注入跳过按钮
         this.createSkipButton(videoElement);
@@ -428,7 +429,7 @@ class AdDetector {
         this.removeAutoSkipListener();
 
         // 保存无广告结果到缓存
-        await CacheService.saveDetectionResult(bvid, false, [], []);
+        await CacheService.saveDetectionResult(bvid, false, [], [], false);
       }
 
     } catch (error) {
