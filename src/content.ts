@@ -71,37 +71,6 @@ class AdDetector {
     this.removeAutoSkipListener();
   }
 
-  /**
-   * 限制模式下的广告预检测条件判断
-   * 用户可以根据需要修改此方法中的判断逻辑
-   */
-  private static checkAdCondition(
-    videoInfo: any,
-    topComment: string | null,
-    jumpUrl: Record<string, Record<string, any>> | null,
-  ): boolean {
-    // TODO: 用户需要在此处实现具体的广告预检测逻辑
-    // 这里提供一个示例框架，用户可以根据实际需求修改
-
-    console.log('【VideoAdGuard】限制模式：开始广告预检测条件判断');
-
-    // 示例条件1：检查置顶评论是否包含商品链接
-    if (topComment && jumpUrl) {
-      const hasProductLinks = Object.keys(jumpUrl).some(key =>
-        jumpUrl[key] && typeof jumpUrl[key] === 'object'
-      );
-      if (hasProductLinks) {
-        console.log('【VideoAdGuard】限制模式：检测到置顶评论包含链接');
-        return true;
-      }
-    }
-
-    // 用户可以在此处添加更多检测条件
-    // 例如：视频时长、标题关键词、UP主信息等
-
-    console.log('【VideoAdGuard】限制模式：未满足广告预检测条件');
-    return false;
-  }
 
   public static async analyze() {
     try {
