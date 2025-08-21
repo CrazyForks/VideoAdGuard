@@ -17,13 +17,19 @@
     "128": "icons/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://*.bilibili.com https://api.bilibili.com https://*.bilivideo.com https://api.groq.com;"
   },
   "permissions": [
     "cookies",
     "storage",
     "tabs",
     "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.bilibili.com/*",
+    "*://api.bilibili.com/*",
+    "*://*.bilivideo.com/*",
+    "*://api.groq.com/*"
   ],
   "background": {
     "scripts": [
@@ -48,7 +54,8 @@
       ],
       "js": [
         "content.js"
-      ]
+      ],
+      "run_at": "document_start"
     }
   ]
 }

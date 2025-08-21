@@ -40,12 +40,40 @@ export class AudioService {
    */
   public static async downloadAudio(audioUrl: string): Promise<Blob> {
     try {
-      const response = await fetch(audioUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Referer': 'https://www.bilibili.com/'
-        }
-      });
+      let response: Response;
+      
+      // 判断是否是 bilivideo.com 域名的资源
+      if (audioUrl.includes('bilivideo.com')) {
+        response = await fetch(audioUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/',
+            'Accept': '*/*',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Sec-Fetch-Dest': 'video',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'cross-site'
+          },
+          credentials: 'omit', // 对于 bilivideo.com 资源，不发送 cookies
+          mode: 'cors',
+          referrerPolicy: 'strict-origin-when-cross-origin'
+        });
+      } else {
+        response = await fetch(audioUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/',
+            'Origin': 'https://www.bilibili.com',
+            'Accept': '*/*',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+          },
+          credentials: 'include',
+          mode: 'cors',
+          referrerPolicy: 'strict-origin-when-cross-origin'
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`音频下载失败: ${response.status} ${response.statusText}`);

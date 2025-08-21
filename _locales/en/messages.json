@@ -1,0 +1,118 @@
+{
+  "extensionName": {
+    "message": "VideoAdGuard",
+    "description": "Extension name"
+  },
+  "extensionDescription": {
+    "message": "Based on large language models, automatically detects embedded/sponsored ads in Bilibili videos. When videos enter irrelevant sponsored content, it can automatically skip ads.",
+    "description": "Extension description"
+  },
+  "settingsTitle": {
+    "message": "Bilibili Ad Detection Settings",
+    "description": "Settings page title"
+  },
+  "enableExtension": {
+    "message": "Enable Extension",
+    "description": "Enable extension checkbox label"
+  },
+  "autoSkipAd": {
+    "message": "Auto Skip Ads",
+    "description": "Auto skip ads checkbox label"
+  },
+  "restrictedMode": {
+    "message": "Restricted Mode",
+    "description": "Restricted mode checkbox label"
+  },
+  "localOllama": {
+    "message": "Connect to Local Ollama",
+    "description": "Local Ollama checkbox label"
+  },
+  "apiUrl": {
+    "message": "API URL:",
+    "description": "API URL input label"
+  },
+  "apiUrlPlaceholder": {
+    "message": "Please enter API URL",
+    "description": "API URL input placeholder"
+  },
+  "apiKey": {
+    "message": "API Key:",
+    "description": "API key input label"
+  },
+  "apiKeyPlaceholder": {
+    "message": "Please enter API key",
+    "description": "API key input placeholder"
+  },
+  "model": {
+    "message": "Model Name:",
+    "description": "Model name input label"
+  },
+  "modelPlaceholder": {
+    "message": "Please enter model name",
+    "description": "Model name input placeholder"
+  },
+  "enableAudioTranscription": {
+    "message": "Enable Speech Recognition",
+    "description": "Enable audio transcription checkbox label"
+  },
+  "groqApiKey": {
+    "message": "Groq API Key:",
+    "description": "Groq API key input label"
+  },
+  "groqApiKeyPlaceholder": {
+    "message": "Please enter Groq API key",
+    "description": "Groq API key input placeholder"
+  },
+  "enableWhitelist": {
+    "message": "Enable UP Whitelist",
+    "description": "Enable whitelist checkbox label"
+  },
+  "upUidPlaceholder": {
+    "message": "Enter UP UID",
+    "description": "UP UID input placeholder"
+  },
+  "addToWhitelist": {
+    "message": "Add to Whitelist",
+    "description": "Add to whitelist button text"
+  },
+  "removeFromWhitelist": {
+    "message": "Remove",
+    "description": "Remove from whitelist button text"
+  },
+  "register": {
+    "message": "Register",
+    "description": "Register link text"
+  },
+  "currentNotOnBilibili": {
+    "message": "Not currently on Bilibili video page",
+    "description": "Message when not on Bilibili page"
+  },
+  "extensionNotLoaded": {
+    "message": "Extension not fully loaded, please wait or refresh",
+    "description": "Message when extension is not loaded"
+  },
+  "noAdDetected": {
+    "message": "No ad information detected",
+    "description": "Message when no ads are detected"
+  },
+  "pleaseEnterUid": {
+    "message": "Please enter UP UID",
+    "description": "Error message for empty UID"
+  },
+  "addedToWhitelist": {
+    "message": "Added to whitelist",
+    "description": "Success message for adding to whitelist"
+  },
+  "alreadyInWhitelist": {
+    "message": "This UP is already in the whitelist",
+    "description": "Error message when UP is already whitelisted"
+  },
+  "addFailed": {
+    "message": "Add failed: ",
+    "description": "Error message prefix for add failure"
+  },
+  "removedFromWhitelist": {
+    "message": "Removed from whitelist",
+    "description": "Success message for removing from whitelist"
+  }
+}

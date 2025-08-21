@@ -34,9 +34,17 @@ export class WbiUtils {
     }
 
     const response = await fetch('https://api.bilibili.com/x/web-interface/nav', {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.bilibili.com/',
+        'Origin': 'https://www.bilibili.com',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+      },
+      credentials: 'include',
+      mode: 'cors',
+      referrerPolicy: 'strict-origin-when-cross-origin'
     });
     const data = await response.json();
     const wbiImg = data.data.wbi_img;

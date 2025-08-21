@@ -69,8 +69,12 @@ class ApiRequestHandler {
 
       const response = await fetch(url, {
         method: "POST",
-        headers,
+        headers: {
+          ...headers,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
         body: JSON.stringify(body),
+        mode: 'cors'
       });
 
       const data = await response.json();
@@ -126,7 +130,24 @@ class AudioTranscriptionHandler {
    */
   private static async callGroqApiWithStream(audioUrl: string, fileInfo: any, options: any, apiKey: string): Promise<any> {
     // 获取音频流
-    const audioResponse = await fetch(audioUrl);
+    let audioResponse: Response;
+    
+    // 判断是否是 bilivideo.com 域名的资源
+    if (audioUrl.includes('bilivideo.com')) {
+      audioResponse = await BilivideoResourceHandler.fetchBilivideoResource(audioUrl);
+    } else {
+      audioResponse = await fetch(audioUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.bilibili.com/',
+          'Origin': 'https://www.bilibili.com'
+        },
+        credentials: 'include',
+        mode: 'cors',
+        referrerPolicy: 'strict-origin-when-cross-origin'
+      });
+    }
     if (!audioResponse.ok) {
       throw new Error('无法获取音频数据');
     }
@@ -172,8 +193,10 @@ class AudioTranscriptionHandler {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
-      body: formData
+      body: formData,
+      mode: 'cors'
     });
 
     if (!response.ok) {
@@ -186,6 +209,33 @@ class AudioTranscriptionHandler {
   }
 
 
+}
+
+// 专门处理 bilivideo.com 资源请求的处理器
+class BilivideoResourceHandler {
+  /**
+   * 处理 bilivideo.com 资源请求，使用正确的 referrer 策略
+   */
+  static async fetchBilivideoResource(url: string, options: RequestInit = {}): Promise<Response> {
+    return fetch(url, {
+      ...options,
+      method: options.method || 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.bilibili.com/',
+        'Origin': 'https://www.bilibili.com',
+        'Accept': '*/*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Sec-Fetch-Dest': 'video',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'cross-site',
+        ...options.headers
+      },
+      credentials: 'omit', // 对于 bilivideo.com 资源，不发送 cookies
+      mode: 'cors',
+      referrerPolicy: 'strict-origin-when-cross-origin'
+    });
+  }
 }
 
 // 注册消息监听器

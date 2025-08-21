@@ -7,11 +7,20 @@ export class BilibiliService {
     console.log('【VideoAdGuard】[BilibiliService] Fetching URL:', fullUrl);
 
     const response = await fetch(fullUrl, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://www.bilibili.com/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.bilibili.com/',
+        'Origin': 'https://www.bilibili.com',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       },
-      credentials: 'include'
+      credentials: 'include',
+      mode: 'cors',
+      referrerPolicy: 'strict-origin-when-cross-origin'
     });
 
     const data = await response.json();
@@ -68,7 +77,18 @@ export class BilibiliService {
 
   public static async getCaptions(url: string) {
     console.log('【VideoAdGuard】[BilibiliService] Getting captions from URL:', url);
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.bilibili.com/',
+        'Origin': 'https://www.bilibili.com',
+        'Accept': 'application/json, text/plain, */*'
+      },
+      credentials: 'include',
+      mode: 'cors',
+      referrerPolicy: 'strict-origin-when-cross-origin'
+    });
     const data = await response.json();
     console.log('【VideoAdGuard】[BilibiliService] Captions result:', data);
     return data;

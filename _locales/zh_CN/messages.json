@@ -4,7 +4,115 @@
     "description": "扩展名称"
   },
   "extensionDescription": {
-    "message": "基于大语言模型检测B站视频中的植入广告",
+    "message": "基于大语言模型，自动识别B站视频中的植入/口播广告，当视频进入与内容不相关口播广告时，可自动跳过广告。",
     "description": "扩展描述"
+  },
+  "settingsTitle": {
+    "message": "B站广告检测设置",
+    "description": "设置页面标题"
+  },
+  "enableExtension": {
+    "message": "启用插件",
+    "description": "启用插件复选框标签"
+  },
+  "autoSkipAd": {
+    "message": "自动跳过广告",
+    "description": "自动跳过广告复选框标签"
+  },
+  "restrictedMode": {
+    "message": "限制模式",
+    "description": "限制模式复选框标签"
+  },
+  "localOllama": {
+    "message": "连接本地 Ollama",
+    "description": "本地Ollama复选框标签"
+  },
+  "apiUrl": {
+    "message": "API 地址:",
+    "description": "API地址输入框标签"
+  },
+  "apiUrlPlaceholder": {
+    "message": "请输入API地址",
+    "description": "API地址输入框占位符"
+  },
+  "apiKey": {
+    "message": "API 密钥:",
+    "description": "API密钥输入框标签"
+  },
+  "apiKeyPlaceholder": {
+    "message": "请输入API密钥",
+    "description": "API密钥输入框占位符"
+  },
+  "model": {
+    "message": "模型名称:",
+    "description": "模型名称输入框标签"
+  },
+  "modelPlaceholder": {
+    "message": "请输入模型名称",
+    "description": "模型名称输入框占位符"
+  },
+  "enableAudioTranscription": {
+    "message": "启用语音识别",
+    "description": "启用语音识别复选框标签"
+  },
+  "groqApiKey": {
+    "message": "Groq 密钥：",
+    "description": "Groq API密钥输入框标签"
+  },
+  "groqApiKeyPlaceholder": {
+    "message": "请输入Groq API密钥",
+    "description": "Groq API密钥输入框占位符"
+  },
+  "enableWhitelist": {
+    "message": "启用UP主白名单",
+    "description": "启用白名单复选框标签"
+  },
+  "upUidPlaceholder": {
+    "message": "输入UP主UID",
+    "description": "UP主UID输入框占位符"
+  },
+  "addToWhitelist": {
+    "message": "添加到白名单",
+    "description": "添加到白名单按钮文本"
+  },
+  "removeFromWhitelist": {
+    "message": "移除",
+    "description": "从白名单移除按钮文本"
+  },
+  "register": {
+    "message": "注册",
+    "description": "注册链接文本"
+  },
+  "currentNotOnBilibili": {
+    "message": "当前不在哔哩哔哩视频页面",
+    "description": "不在B站页面时的提示信息"
+  },
+  "extensionNotLoaded": {
+    "message": "插件未完全加载，请等待或刷新",
+    "description": "插件未加载时的提示信息"
+  },
+  "noAdDetected": {
+    "message": "未检测到广告信息",
+    "description": "未检测到广告时的提示信息"
+  },
+  "pleaseEnterUid": {
+    "message": "请输入UP主UID",
+    "description": "UID为空时的错误信息"
+  },
+  "addedToWhitelist": {
+    "message": "已添加到白名单",
+    "description": "添加到白名单成功信息"
+  },
+  "alreadyInWhitelist": {
+    "message": "该UP主已在白名单中",
+    "description": "UP主已在白名单中的错误信息"
+  },
+  "addFailed": {
+    "message": "添加失败：",
+    "description": "添加失败错误信息前缀"
+  },
+  "removedFromWhitelist": {
+    "message": "已从白名单移除",
+    "description": "从白名单移除成功信息"
   }
 }
