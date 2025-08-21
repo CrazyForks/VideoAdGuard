@@ -121,8 +121,13 @@ export class AIService {
 
       // 仅对支持 JSON 模式的模型添加 response_format
       if (isOpenAI || isAzureOpenAI || isZhipuAI || isDeepseek || isQwen) {
-        bodyExtra.response_format = { type: "json_object" };
+        bodyExtra.response_format = { "type": "json_object" };
       }
+
+      if(isZhipuAI && model.includes("glm-4.5")) {
+        bodyExtra.thinking = { "type": "disabled" };
+      }
+
 
       const data = await this.makeRequest(videoInfo, url, model,
       {
@@ -179,7 +184,11 @@ export class AIService {
 
       // 仅对支持 JSON 模式的模型添加 response_format
       if (isOpenAI || isAzureOpenAI || isZhipuAI || isDeepseek || isQwen) {
-        bodyExtra.response_format = { type: "json_object" };
+        bodyExtra.response_format = { "type": "json_object" };
+      }
+
+      if(isZhipuAI && model.includes("glm-4.5")) {
+        bodyExtra.thinking = { "type": "disabled" };
       }
 
       const data = await this.makeRequestRestricted(videoInfo, url, model,
@@ -287,7 +296,7 @@ const prompt = `你需要分析视频内容，识别其中的植入广告。
         },
         {
           role: "user",
-          content: `链接标题：${linkTitle}\n\n请提取其中的核心商品名称，只返回商品名称，不要解释。`
+          content: `链接标题：${linkTitle}\n\n请提取其中的核心商品名称，只返回纯文本的商品名称，不要解释。`
         }
       ],
       temperature: 0,
@@ -317,13 +326,25 @@ const prompt = `你需要分析视频内容，识别其中的植入广告。
         throw new Error("未设置API密钥");
       }
 
+      const isOpenAI = url.includes("api.openai.com");
+      const isAzureOpenAI = url.includes("openai.azure.com");
+      const isZhipuAI = url.includes("open.bigmodel.cn");
+      const isDeepseek = url.includes("api.deepseek.com");
+      const isQwen = url.includes("aliyuncs.com");
+
+      const bodyExtra: any = {};
+
+      if(isZhipuAI && model.includes("glm-4.5")) {
+        bodyExtra.thinking = { "type": "disabled" };
+      }
+
       const response = await chrome.runtime.sendMessage({
         url: url,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: messageBody,
+        body: { ...messageBody, ...bodyExtra },
       });
 
       if (response.success) {
@@ -348,7 +369,7 @@ const prompt = `你需要分析视频内容，识别其中的植入广告。
 
   private static async getModel(): Promise<string> {
     const result = await chrome.storage.local.get('model');
-    return result.model || 'glm-4-flash';
+    return result.model || 'glm-4.5-flash';
   }
 
   private static async getEnableLocalOllama(): Promise<boolean> {
