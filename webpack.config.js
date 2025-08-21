@@ -1,8 +1,7 @@
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const TerserPlugin = require('terser-webpack-plugin');  
 
-module.exports = {
+const createConfig = (browser) => ({
   mode: 'production',
   devtool: false,
   optimization: {
@@ -27,7 +26,7 @@ module.exports = {
   },
   output: {
     filename: '[name].js',
-    path: path.resolve(__dirname, 'VideoAdGuard')
+    path: path.resolve(__dirname, `builds/${browser}`)
   },
   plugins: [
     new CopyWebpackPlugin({
@@ -35,8 +34,13 @@ module.exports = {
         { from: 'src/popup.html', to: 'popup.html' },
         { from: '_locales', to: '_locales' },
         { from: 'icons', to: 'icons' },
-        { from: 'manifest.json', to: 'manifest.json' }
+        { from: `manifests/manifest-${browser}.json`, to: 'manifest.json' }
       ]
     })
   ]
-};
+});
+
+module.exports = [
+  createConfig('chrome'),
+  createConfig('firefox')
+];

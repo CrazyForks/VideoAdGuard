@@ -1,5 +1,5 @@
 node_modules/
-VideoAdGuard/
+builds/
 
 dist.crx
 dist.pem
@@ -10,3 +10,6 @@ dist.pem
 *.test.*
 
 temp/
+
+VideoAdGuard.crx
+VideoAdGuard.pem
