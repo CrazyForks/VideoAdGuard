@@ -55,7 +55,24 @@ export class AudioService {
     }
   }
 
-
+  /**
+   * 直接以 ArrayBuffer 下载音频，并返回内容类型
+   */
+  public static async downloadAudioBytes(audioUrl: string): Promise<{ bytes: ArrayBuffer; type: string }> {
+    try {
+      const response = await fetch(audioUrl);
+      if (!response.ok) {
+        throw new Error(`音频下载失败: ${response.status} ${response.statusText}`);
+      }
+      const type = response.headers.get('content-type') || 'application/octet-stream';
+      const bytes = await response.arrayBuffer();
+      console.log('【VideoAdGuard】[Audio] 音频(ArrayBuffer)下载完成');
+      return { bytes, type };
+    } catch (error) {
+      console.warn('【VideoAdGuard】[Audio] 音频(ArrayBuffer)下载失败:', error);
+      throw error;
+    }
+  }
 
   /**
    * 音频处理流程：下载、转换
@@ -98,67 +115,94 @@ export class AudioService {
   }
 
   /**
-   * 通过后台脚本调用Groq语音识别API
-   * @param audioBlob 音频文件Blob
-   * @param options 识别选项
-   * @returns 识别结果对象
+   * 直接用 ArrayBuffer 走识别（与 background.ts 的 audioBytes 对接）
    */
-  public static async transcribeAudio(
-    audioBlob: Blob,
-    options: {
-      model?: string;
-      language?: string;
-      responseFormat?: 'json' | 'text' | 'verbose_json';
-    } = {}
+  public static async transcribeAudioBytes(
+    audioBytes: ArrayBuffer,
+    fileInfo: { name?: string; type?: string }
   ): Promise<any> {
     try {
-      console.log('【VideoAdGuard】[Audio] 开始语音识别...');
+      console.log('【VideoAdGuard】[Audio] 开始语音识别(ArrayBuffer)...');
 
-      // 获取API密钥
       const settings = await chrome.storage.local.get(['groqApiKey']);
       const apiKey = settings.groqApiKey;
-
       if (!apiKey) {
         throw new Error('未配置Groq API密钥，请在设置中配置');
       }
 
-      // 创建临时的Blob URL
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      try {
-        // 通过后台脚本调用API
-        const response = await chrome.runtime.sendMessage({
-          type: 'TRANSCRIBE_AUDIO_FILE_STREAM',
-          data: {
-            audioUrl: audioUrl,
-            fileInfo: {
-              name: 'audio.m4a',
-              size: audioBlob.size,
-              type: audioBlob.type || 'audio/m4a'
-            },
-            apiKey: apiKey,
-            options: {
-              model: options.model || 'whisper-large-v3-turbo',
-              responseFormat: options.responseFormat || 'verbose_json'
-            }
+      const response = await chrome.runtime.sendMessage({
+        type: 'TRANSCRIBE_AUDIO_FILE_STREAM',
+        data: {
+          audioBytes,
+          fileInfo: {
+            name: fileInfo.name || 'audio.bin',
+            type: fileInfo.type || 'application/octet-stream',
+            size: audioBytes.byteLength
+          },
+          apiKey,
+          options: {
+            model: 'whisper-large-v3-turbo',
+            responseFormat: 'verbose_json'
           }
-        });
-
-        if (response && response.success) {
-          console.log('【VideoAdGuard】[Audio] 语音识别成功');
-          return response.data;
-        } else {
-          const errorMsg = response?.error || '未知错误';
-          console.warn('【VideoAdGuard】[Audio] 语音识别失败:', errorMsg);
-          throw new Error(errorMsg);
         }
-      } finally {
-        // 清理临时URL
-        URL.revokeObjectURL(audioUrl);
+      });
+
+      if (response && response.success) {
+        console.log('【VideoAdGuard】[Audio] 语音识别成功(ArrayBuffer)');
+        return response.data;
+      } else {
+        const errorMsg = response?.error || '未知错误';
+        console.warn('【VideoAdGuard】[Audio] 语音识别失败(ArrayBuffer):', errorMsg);
+        throw new Error(errorMsg);
+      }
+    } catch (error) {
+      console.warn('【VideoAdGuard】[Audio] 语音识别失败(ArrayBuffer):', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 通过后台直接使用音频 URL 进行识别（后台负责下载 Blob、类型修正与调用 Groq）
+   */
+  public static async transcribeAudioByUrl(
+    audioUrl: string,
+    fileInfo: { name?: string; type?: string; size?: number },
+    options: { model?: string; responseFormat?: string } = {}
+  ): Promise<any> {
+    try {
+      console.log('【VideoAdGuard】[Audio] 开始语音识别(通过URL)...', audioUrl);
+
+      const settings = await chrome.storage.local.get(['groqApiKey']);
+      const apiKey = settings.groqApiKey;
+      if (!apiKey) throw new Error('未配置Groq API密钥，请在设置中配置');
+
+      const response = await chrome.runtime.sendMessage({
+        type: 'TRANSCRIBE_AUDIO_FILE_STREAM',
+        data: {
+          audioUrl,
+          fileInfo: {
+            name: fileInfo.name || 'audio.bin',
+            type: fileInfo.type || 'application/octet-stream',
+            size: fileInfo.size || 0
+          },
+          apiKey,
+          options: {
+            model: options.model || 'whisper-large-v3-turbo',
+            responseFormat: options.responseFormat || 'verbose_json'
+          }
+        }
+      });
+
+      if (response && response.success) {
+        console.log('【VideoAdGuard】[Audio] 语音识别成功(通过URL)');
+        return response.data;
       }
 
+      const err = response?.error || '未知错误';
+      console.warn('【VideoAdGuard】[Audio] 语音识别失败(通过URL):', err);
+      throw new Error(err);
     } catch (error) {
-      console.warn('【VideoAdGuard】[Audio] 语音识别失败:', error);
+      console.warn('【VideoAdGuard】[Audio] 语音识别失败(通过URL):', error);
       throw error;
     }
   }
@@ -182,19 +226,21 @@ export class AudioService {
     try {
       console.log('【VideoAdGuard】[Audio] 开始完整的音频处理和识别流程...');
 
-      // 1. 处理音频
-      const audioBlob = await this.processAudio(playUrlData);
-      if (!audioBlob) {
-        throw new Error('音频处理失败');
+      // 优先获取音频下载 URL，然后交由后台负责下载与识别
+      const audioUrl = this.getLowestBandwidthAudioUrl(playUrlData);
+      console.log('【VideoAdGuard】[Audio] 音频URL:', audioUrl);
+      if (!audioUrl) {
+        return null;
       }
 
-      // 2. 语音识别
-      const transcription = await this.transcribeAudio(audioBlob, transcribeOptions);
+      // 简单根据 URL 或播放信息推断类型与文件名（后台会进行最终类型修正）
+      const guessedType = (playUrlData?.dash?.audio?.[0]?.mimeType) || '';
+      const name = audioUrl.split('/').pop() || 'audio.bin';
 
-      console.log('【VideoAdGuard】[Audio] 完整流程处理成功');
-      return {
-        transcription
-      };
+      const transcription = await this.transcribeAudioByUrl(audioUrl, { name, type: guessedType });
+
+      console.log('【VideoAdGuard】[Audio] 完整流程处理成功(通过URL)');
+      return { transcription };
     } catch (error) {
       console.warn('【VideoAdGuard】[Audio] 完整流程处理失败:', error);
       return null;
