@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "__MSG_extensionDescription__",
   "default_locale": "zh_CN",
   "icons": {
@@ -18,10 +18,6 @@
     "storage",
     "tabs",
     "activeTab"
-  ],
-  "host_permissions": [
-    "https://*.bilibili.com/*",
-    "https://api.groq.com/*"
   ],
   "background": {
     "service_worker": "background.js"

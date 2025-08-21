@@ -5,10 +5,25 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 <div align="center">
   <img src="./icons/icon128.png" alt="VideoAdGuard Logo">
+
+<!-- 浏览器插件下载 -->
+
+<div style="margin-top: 20px;">
+    <a href="https://microsoftedge.microsoft.com/addons/detail/videoadguard/mpfelbgplaolpbjmdbjjajonkmmgekgo/" target="_blank">
+      <img src="https://img.shields.io/badge/Microsoft%20Edge-0078D4?style=for-the-badge&logo=Microsoft-edge&logoColor=white" alt="Edge插件下载">
+    </a>
+    <a href="https://chromewebstore.google.com/detail/videoadguard/nmkkpflniidbbodhjhjaijadbccidbgi/" target="_blank">
+      <img src="https://img.shields.io/badge/Google%20Chrome-EEDD82?style=for-the-badge&logo=GoogleChrome&logoColor=red" alt="Chrome插件下载">
+    </a>
+    <a href="" target="_blank">
+      <img src="https://img.shields.io/badge/Firefox-FF7139?style=for-the-badge&logo=Firefox-Browser&logoColor=white" alt="Firefox插件下载">
+    </a>
+  </div>
 </div>
 
 ## News
 
+- v1.2.6 支持 glm-4.5 系列模型，适配 Firefox 浏览器
 - v1.2.5 优化缓存机制；优化av号处理
 - v1.2.4 新增限制模式，仅在有商品链接时进行识别；优化界面
 - v1.2.3 新增音频识别功能，支持无字幕视频检测；新增广告检测结果缓存机制
@@ -30,26 +45,20 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 ## 安装方法
 
-### 1.Edge浏览器
+### 浏览器插件版（推荐）
 
-直接从Microsoft Edge插件商店安装：
-[Edge插件商店 - VideoAdGuard](https://microsoftedge.microsoft.com/addons/detail/videoadguard/mpfelbgplaolpbjmdbjjajonkmmgekgo/)
+点击上方对应浏览器的图标即可下载安装：
 
-### 2.其他浏览器（油猴脚本版）
+- **Edge浏览器**：从Microsoft Edge插件商店安装
+- **Chrome浏览器**：从Chrome插件商店安装
+- **Firefox浏览器**：插件审核中
 
-**注意**：油猴版本更新不及时，如果是Chrome内核浏览器推荐采用第3种方法
+### 油猴脚本版
+
+**注意**：油猴版本更新不及时，如果是chromium内核浏览器推荐采用插件版
 
 1. 安装[篡改猴插件](https://www.tampermonkey.net/)
 2. 从[GreasyFork](https://greasyfork.org/zh-CN/scripts/531743-b%E7%AB%99%E8%A7%86%E9%A2%91%E6%A4%8D%E5%85%A5%E5%B9%BF%E5%91%8A%E6%A3%80%E6%B5%8B%E5%99%A8-videoadguard/)安装脚本
-
-### 3.Chrome内核浏览器手动安装（适合二次开发）
-
-1. 下载插件压缩包：
-   - [夸克网盘](https://pan.quark.cn/s/4afa6f60a5f2)
-   - [GitHub Releases](https://github.com/Warma10032/VideoAdGuard/releases)
-2. 解压压缩包
-3. 打开浏览器，进入扩展管理页面，开启开发者模式
-4. 点击"加载已解压的扩展程序"，选择解压后的文件夹
 
 ## 使用方法
 
