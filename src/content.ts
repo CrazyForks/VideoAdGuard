@@ -181,7 +181,7 @@ class AdDetector {
               good_name.push(response);
               console.log('【VideoAdGuard】限制模式：成功提取商品名称:', response);
             } catch (error) {
-              console.error('【VideoAdGuard】限制模式：提取商品名称失败:', error);
+              console.warn('【VideoAdGuard】限制模式：提取商品名称失败:', error);
               // 如果提取失败，使用原始链接标题作为商品名
               good_name.push(ad_text);
             }
@@ -333,7 +333,7 @@ class AdDetector {
 
         console.log('【VideoAdGuard】AI分析完成，检测结果:', result);
       } catch (e) {
-        console.error('【VideoAdGuard】大模型返回数据JSON解析失败:', e);
+        console.warn('【VideoAdGuard】大模型返回数据JSON解析失败:', e);
         throw new Error(`AI返回数据格式错误: ${(e as Error).message}`);
       }
 
@@ -378,7 +378,7 @@ class AdDetector {
         // 首先获取video元素和总时长
         const videoElement = document.querySelector("video");
         if (!videoElement) {
-          console.error('未找到视频元素');
+          console.warn('未找到视频元素');
           throw new Error('未找到视频元素');
         }
         const videoDuration = videoElement ? videoElement.duration : 0; // 获取视频总时长
@@ -421,7 +421,7 @@ class AdDetector {
       }
 
     } catch (error) {
-      console.error('【VideoAdGuard】AI分析失败:', error);
+      console.warn('【VideoAdGuard】AI分析失败:', error);
       this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + 'AI分析失败：' + (error as Error).message;
       this.removeAutoSkipListener();
     }
@@ -686,7 +686,7 @@ class AdDetector {
 
     const player = document.querySelector('.bpx-player-control-bottom');
     if (!player) {
-      console.error("【VideoAdGuard】未找到播放器底部控制栏");
+      console.warn("【VideoAdGuard】未找到播放器底部控制栏");
       return;
     };
 

@@ -28,7 +28,7 @@ export class AudioService {
 
       return minBandwidthAudio.baseUrl;
     } catch (error) {
-      console.error('【VideoAdGuard】[Audio] 获取音频URL失败:', error);
+      console.warn('【VideoAdGuard】[Audio] 获取音频URL失败:', error);
       return null;
     }
   }
@@ -40,40 +40,7 @@ export class AudioService {
    */
   public static async downloadAudio(audioUrl: string): Promise<Blob> {
     try {
-      let response: Response;
-      
-      // 判断是否是 bilivideo.com 域名的资源
-      if (audioUrl.includes('bilivideo.com')) {
-        response = await fetch(audioUrl, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://www.bilibili.com/',
-            'Accept': '*/*',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'Sec-Fetch-Dest': 'video',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'cross-site'
-          },
-          credentials: 'omit', // 对于 bilivideo.com 资源，不发送 cookies
-          mode: 'cors',
-          referrerPolicy: 'strict-origin-when-cross-origin'
-        });
-      } else {
-        response = await fetch(audioUrl, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://www.bilibili.com/',
-            'Origin': 'https://www.bilibili.com',
-            'Accept': '*/*',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
-          },
-          credentials: 'include',
-          mode: 'cors',
-          referrerPolicy: 'strict-origin-when-cross-origin'
-        });
-      }
+      const response = await fetch(audioUrl);
 
       if (!response.ok) {
         throw new Error(`音频下载失败: ${response.status} ${response.statusText}`);
@@ -83,7 +50,7 @@ export class AudioService {
 
       return await response.blob();
     } catch (error) {
-      console.error('【VideoAdGuard】[Audio] 音频下载失败:', error);
+      console.warn('【VideoAdGuard】[Audio] 音频下载失败:', error);
       throw error;
     }
   }
@@ -125,7 +92,7 @@ export class AudioService {
       throw new Error('未知格式: ' + audioBlob.type);
 
     } catch (error) {
-      console.error('【VideoAdGuard】[Audio] 音频处理失败:', error);
+      console.warn('【VideoAdGuard】[Audio] 音频处理失败:', error);
       return null;
     }
   }
@@ -182,7 +149,7 @@ export class AudioService {
           return response.data;
         } else {
           const errorMsg = response?.error || '未知错误';
-          console.error('【VideoAdGuard】[Audio] 语音识别失败:', errorMsg);
+          console.warn('【VideoAdGuard】[Audio] 语音识别失败:', errorMsg);
           throw new Error(errorMsg);
         }
       } finally {
@@ -191,7 +158,7 @@ export class AudioService {
       }
 
     } catch (error) {
-      console.error('【VideoAdGuard】[Audio] 语音识别失败:', error);
+      console.warn('【VideoAdGuard】[Audio] 语音识别失败:', error);
       throw error;
     }
   }
@@ -229,7 +196,7 @@ export class AudioService {
         transcription
       };
     } catch (error) {
-      console.error('【VideoAdGuard】[Audio] 完整流程处理失败:', error);
+      console.warn('【VideoAdGuard】[Audio] 完整流程处理失败:', error);
       return null;
     }
   }

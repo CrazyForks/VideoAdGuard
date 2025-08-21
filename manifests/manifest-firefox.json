@@ -6,7 +6,7 @@
   "default_locale": "zh_CN",
   "browser_specific_settings": {
     "gecko": {
-      "id": "videoadguard@warma10032.github.io",
+      "id": "videoadguard@warma10032",
       "strict_min_version": "109.0"
     }
   },
@@ -17,25 +17,20 @@
     "128": "icons/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://*.bilibili.com https://api.bilibili.com https://*.bilivideo.com https://api.groq.com;"
+    "extension_pages": "script-src 'self'; object-src 'self'"
   },
   "permissions": [
-    "cookies",
     "storage",
     "tabs",
     "activeTab"
   ],
   "host_permissions": [
-    "*://*.bilibili.com/*",
-    "*://api.bilibili.com/*",
-    "*://*.bilivideo.com/*",
-    "*://api.groq.com/*"
+    "*://*/*"
   ],
   "background": {
     "scripts": [
       "background.js"
-    ],
-    "persistent": false
+    ]
   },
   "action": {
     "default_icon": {

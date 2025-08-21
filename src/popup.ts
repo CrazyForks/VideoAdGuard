@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         enableAudioTranscription
       });
     } catch (error) {
-      console.error('保存设置失败:', error);
+      console.warn('保存设置失败:', error);
     }
   }
 

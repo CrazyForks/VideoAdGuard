@@ -39,7 +39,7 @@ export class CacheService {
       const result = await chrome.storage.local.get(CacheService.CACHE_KEY);
       return result[CacheService.CACHE_KEY] || {};
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 获取缓存失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 获取缓存失败:', error);
       return {};
     }
   }
@@ -54,7 +54,7 @@ export class CacheService {
         [CacheService.CACHE_KEY]: cache
       });
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 保存缓存失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 保存缓存失败:', error);
     }
   }
 
@@ -77,7 +77,7 @@ export class CacheService {
       const result = await chrome.storage.local.get(CacheService.LAST_CLEANUP_KEY);
       return result[CacheService.LAST_CLEANUP_KEY] || 0;
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 获取上次清理时间失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 获取上次清理时间失败:', error);
       return 0;
     }
   }
@@ -92,7 +92,7 @@ export class CacheService {
         [CacheService.LAST_CLEANUP_KEY]: timestamp
       });
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 设置上次清理时间失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 设置上次清理时间失败:', error);
     }
   }
 
@@ -120,7 +120,7 @@ export class CacheService {
 
       await CacheService.forceCleanExpiredCache();
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 清理过期缓存失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 清理过期缓存失败:', error);
     }
   }
 
@@ -153,7 +153,7 @@ export class CacheService {
         console.log('【VideoAdGuard】[Cache] 没有过期缓存项需要清理');
       }
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 强制清理过期缓存失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 强制清理过期缓存失败:', error);
     }
   }
 
@@ -190,7 +190,7 @@ export class CacheService {
 
       return item;
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 获取缓存失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 获取缓存失败:', error);
       return null;
     }
   }
@@ -227,7 +227,7 @@ export class CacheService {
       
       console.log(`【VideoAdGuard】[Cache] 已保存 ${bvid} 的检测结果到缓存`);
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 保存缓存失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 保存缓存失败:', error);
     }
   }
 
@@ -246,7 +246,7 @@ export class CacheService {
         console.log(`【VideoAdGuard】[Cache] 已删除 ${bvid} 的缓存`);
       }
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 删除缓存失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 删除缓存失败:', error);
     }
   }
 
@@ -258,7 +258,7 @@ export class CacheService {
       await chrome.storage.local.remove(CacheService.CACHE_KEY);
       console.log('【VideoAdGuard】[Cache] 已清空所有缓存');
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 清空缓存失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 清空缓存失败:', error);
     }
   }
 
@@ -299,7 +299,7 @@ export class CacheService {
         nextCleanupTime: lastCleanupTime + CacheService.CLEANUP_INTERVAL_MS
       };
     } catch (error) {
-      console.error('【VideoAdGuard】[Cache] 获取缓存统计失败:', error);
+      console.warn('【VideoAdGuard】[Cache] 获取缓存统计失败:', error);
       return {
         totalCount: 0,
         expiredCount: 0,

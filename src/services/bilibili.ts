@@ -10,17 +10,9 @@ export class BilibiliService {
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.bilibili.com/',
-        'Origin': 'https://www.bilibili.com',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'Referer': 'https://www.bilibili.com/'
       },
-      credentials: 'include',
-      mode: 'cors',
-      referrerPolicy: 'strict-origin-when-cross-origin'
+      credentials: 'include'
     });
 
     const data = await response.json();
@@ -53,14 +45,19 @@ export class BilibiliService {
 
   public static async getTopComments(bvid: string) {
     console.log('【VideoAdGuard】[BilibiliService] Getting top comments');
-    const data = await this.fetchWithCookie(
-      'https://api.bilibili.com/x/v2/reply',
-      { oid: bvid, type: 1}
-    );
-    const top_replies = data?.top_replies || null;
-    const topComment = top_replies ? (top_replies[0]?.content || null) : null;
-    console.log('【VideoAdGuard】[BilibiliService] Top comments result:', topComment);
-    return topComment;
+    try {
+      const data = await this.fetchWithCookie(
+        'https://api.bilibili.com/x/v2/reply',
+        { oid: bvid, type: 1}
+      );
+      const top_replies = data?.top_replies || null;
+      const topComment = top_replies ? (top_replies[0]?.content || null) : null;
+      console.log('【VideoAdGuard】[BilibiliService] Top comments result:', topComment);
+      return topComment;
+    } catch (error) {
+      console.warn('【VideoAdGuard】[BilibiliService] Failed to get top comments:', error);
+      return null;
+    }
   }
 
   public static async getPlayerInfo(bvid: string, cid: number) {
@@ -77,18 +74,7 @@ export class BilibiliService {
 
   public static async getCaptions(url: string) {
     console.log('【VideoAdGuard】[BilibiliService] Getting captions from URL:', url);
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.bilibili.com/',
-        'Origin': 'https://www.bilibili.com',
-        'Accept': 'application/json, text/plain, */*'
-      },
-      credentials: 'include',
-      mode: 'cors',
-      referrerPolicy: 'strict-origin-when-cross-origin'
-    });
+    const response = await fetch(url);
     const data = await response.json();
     console.log('【VideoAdGuard】[BilibiliService] Captions result:', data);
     return data;

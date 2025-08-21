@@ -34,7 +34,7 @@ export class AIService {
       console.log("【VideoAdGuard】收到大模型响应:", response.data);
       return response.data;
     } else {
-      console.error("【VideoAdGuard】请求失败:", response.error);
+      console.warn("【VideoAdGuard】请求失败:", response.error);
       throw new Error(response.error);
     }
   }
@@ -77,7 +77,7 @@ export class AIService {
       console.log("【VideoAdGuard】限制模式收到大模型响应:", response.data);
       return response.data;
     } else {
-      console.error("【VideoAdGuard】限制模式请求失败:", response.error);
+      console.warn("【VideoAdGuard】限制模式请求失败:", response.error);
       throw new Error(response.error);
     }
   }
@@ -317,7 +317,7 @@ const prompt = `你需要分析视频内容，识别其中的植入广告。
         console.log("【VideoAdGuard】商品名称提取成功:", response.data);
         return JSON.parse(response.data.message.content);
       } else {
-        console.error("【VideoAdGuard】商品名称提取失败:", response.error);
+        console.warn("【VideoAdGuard】商品名称提取失败:", response.error);
         throw new Error(response.error);
       }
     } else {
@@ -351,7 +351,7 @@ const prompt = `你需要分析视频内容，识别其中的植入广告。
         console.log("【VideoAdGuard】商品名称提取成功:", response.data);
         return response.data.choices[0].message.content.trim();
       } else {
-        console.error("【VideoAdGuard】商品名称提取失败:", response.error);
+        console.warn("【VideoAdGuard】商品名称提取失败:", response.error);
         throw new Error(response.error);
       }
     }
