@@ -231,12 +231,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 渲染白名单列表
   function renderWhitelistItems() {
-    whitelistList.innerHTML = whitelistConfig.whitelistedUPs.map(up => `
-      <div class="whitelist-item">
-        <span>${up.name} (UID: ${up.uid})</span>
-        <button data-uid="${up.uid}">移除</button>
-      </div>
-    `).join('');
+    // 清空现有内容
+    whitelistList.innerHTML = '';
+    
+    // 安全地创建DOM元素
+    whitelistConfig.whitelistedUPs.forEach(up => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'whitelist-item';
+      
+      const span = document.createElement('span');
+      span.textContent = `${up.name} (UID: ${up.uid})`;
+      
+      const button = document.createElement('button');
+      button.textContent = '移除';
+      button.dataset.uid = up.uid;
+      
+      itemDiv.appendChild(span);
+      itemDiv.appendChild(button);
+      whitelistList.appendChild(itemDiv);
+    });
   }
   renderWhitelistItems();
 
