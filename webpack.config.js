@@ -1,5 +1,6 @@
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
 
 const createConfig = (browser) => ({
   mode: 'production',
@@ -36,7 +37,9 @@ const createConfig = (browser) => ({
         { from: 'icons', to: 'icons' },
         { from: `manifests/manifest-${browser}.json`, to: 'manifest.json' }
       ]
-    })
+    }),
+    // 将相对导入的 ./services/audio 替换为浏览器特定实现
+    new webpack.NormalModuleReplacementPlugin(/^\.\/services\/audio$/, `./services/audio.${browser}`)
   ]
 });
 
