@@ -15,7 +15,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
     <a href="https://chromewebstore.google.com/detail/videoadguard/nmkkpflniidbbodhjhjaijadbccidbgi/" target="_blank">
       <img src="https://img.shields.io/badge/Google%20Chrome-EEDD82?style=for-the-badge&logo=GoogleChrome&logoColor=red" alt="Chrome插件下载">
     </a>
-    <a href="" target="_blank">
+    <a href="https://addons.mozilla.org/zh-CN/firefox/addon/videoadguard/" target="_blank">
       <img src="https://img.shields.io/badge/Firefox-FF7139?style=for-the-badge&logo=Firefox-Browser&logoColor=white" alt="Firefox插件下载">
     </a>
   </div>
@@ -23,7 +23,8 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 ## News
 
-- v1.2.6 支持 glm-4.5 系列模型，适配 Firefox 浏览器
+- v1.2.7 适配Firefox浏览器
+- v1.2.6 支持 glm-4.5 系列模型，适配 Chrome浏览器
 - v1.2.5 优化缓存机制；优化av号处理
 - v1.2.4 新增限制模式，仅在有商品链接时进行识别；优化界面
 - v1.2.3 新增音频识别功能，支持无字幕视频检测；新增广告检测结果缓存机制
@@ -49,9 +50,9 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 点击上方对应浏览器的图标即可下载安装：
 
-- **Edge浏览器**：从Microsoft Edge插件商店安装
-- **Chrome浏览器**：从Chrome插件商店安装
-- **Firefox浏览器**：插件审核中
+- **Edge浏览器**：![Edge插件下载](https://microsoftedge.microsoft.com/addons/detail/videoadguard/mpfelbgplaolpbjmdbjjajonkmmgekgo/) 
+- **Chrome浏览器**：![Chrome插件下载](https://chromewebstore.google.com/detail/videoadguard/nmkkpflniidbbodhjhjaijadbccidbgi/) 
+- **Firefox浏览器**：![Firefox插件下载](https://addons.mozilla.org/zh-CN/firefox/addon/videoadguard/)
 
 ### 油猴脚本版
 
@@ -62,10 +63,10 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 ## 使用方法
 
-1. **Edge浏览器**：安装完成后，点击插件图标完成设置
+1. **浏览器插件版**：安装完成后，点击插件图标完成设置
 
    ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard1.png)
-2. **其他浏览器**：安装完成后，进入B站视频页面，点击右下角齿轮图标进行设置
+2. **油猴脚本版**：安装完成后，进入B站视频页面，点击右下角齿轮图标进行设置
 
    ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard2.png)
 3. 设置API密钥和模型（详见下方API设置说明）
@@ -148,18 +149,27 @@ VideoAdGuard通过以下步骤检测视频中的植入广告
 
 ```tree
 VideoAdGuard
-├── VideoAdGuard/      # 构建输出目录
-├── _locales/          # i18n资源
-├── docs/              # 文档目录
-├── icons/             # 插件图标资源
-├── src/               # 源代码目录
+├── builds/                        # 构建产物（按浏览器区分）
+│   ├── chrome/                    # Chrome 打包目录
+│   └── firefox/                   # Firefox 打包目录
+├── src/                           # 源代码目录
+│   ├── services/                  # 业务逻辑与平台适配
+│   ├── types/                     # 类型定义
+│   └── utils/                     # 工具函数
+├── manifests/                     # 浏览器清单文件
+│   ├── manifest-chrome.json       # Chrome 清单
+│   └── manifest-firefox.json      # Firefox 清单
+├── _locales/                      # i18n 资源
+├── icons/                         # 插件图标资源
+├── docs/                          # 文档与站点
+├── scripts/                       # 构建与辅助脚本
+│   └── build.js
 ├── VideoAdGuard.Tampermonkey.js   # 油猴脚本版本
-├── manifest.json      # Chrome扩展配置文件
-├── package.json       # 项目依赖配置
-├── tsconfig.json      # TypeScript配置
-├── webpack.config.js  # Webpack构建配置
-├── LICENSE            # 开源许可证
-└── README.md          # 项目说明文档
+├── webpack.config.js              # Webpack 构建配置
+├── tsconfig.json                  # TypeScript 配置
+├── package.json                   # 项目依赖与脚本
+├── LICENSE                        # 开源许可证
+└── README.md                      # 项目说明文档
 ```
 
 ## 自行构建
