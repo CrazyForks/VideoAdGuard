@@ -50,9 +50,9 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 点击上方对应浏览器的图标即可下载安装：
 
-- **Edge浏览器**：![Edge插件下载](https://microsoftedge.microsoft.com/addons/detail/videoadguard/mpfelbgplaolpbjmdbjjajonkmmgekgo/) 
-- **Chrome浏览器**：![Chrome插件下载](https://chromewebstore.google.com/detail/videoadguard/nmkkpflniidbbodhjhjaijadbccidbgi/) 
-- **Firefox浏览器**：![Firefox插件下载](https://addons.mozilla.org/zh-CN/firefox/addon/videoadguard/)
+- **Edge浏览器**：[Edge插件下载](https://microsoftedge.microsoft.com/addons/detail/videoadguard/mpfelbgplaolpbjmdbjjajonkmmgekgo/) 
+- **Chrome浏览器**：[Chrome插件下载](https://chromewebstore.google.com/detail/videoadguard/nmkkpflniidbbodhjhjaijadbccidbgi/) 
+- **Firefox浏览器**：[Firefox插件下载](https://addons.mozilla.org/zh-CN/firefox/addon/videoadguard/)
 
 ### 油猴脚本版
 
@@ -65,7 +65,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 1. **浏览器插件版**：安装完成后，点击插件图标完成设置
 
-   ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard1.png)
+   ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard_popup1.png)
 2. **油猴脚本版**：安装完成后，进入B站视频页面，点击右下角齿轮图标进行设置
 
    ![](https://gcore.jsdelivr.net/gh/Warma10032/image@main/blog/VideoAdGuard2.png)
