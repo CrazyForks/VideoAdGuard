@@ -1,7 +1,10 @@
 # VideoAdGuard - B站视频植入广告检测器
 
 VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具，能够自动识别B站视频中的植入广告内容，并提供跳过广告的功能。
+
 如果你觉得这个插件有用，请给项目点个Star⭐支持一下！
+
+[演示视频](https://www.bilibili.com/video/BV1UGeBztE2T/)
 
 <div align="center">
   <img src="./icons/icon128.png" alt="VideoAdGuard Logo">
@@ -50,8 +53,8 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 点击上方对应浏览器的图标即可下载安装：
 
-- **Edge浏览器**：[Edge插件下载](https://microsoftedge.microsoft.com/addons/detail/videoadguard/mpfelbgplaolpbjmdbjjajonkmmgekgo/) 
-- **Chrome浏览器**：[Chrome插件下载](https://chromewebstore.google.com/detail/videoadguard/nmkkpflniidbbodhjhjaijadbccidbgi/) 
+- **Edge浏览器**：[Edge插件下载](https://microsoftedge.microsoft.com/addons/detail/videoadguard/mpfelbgplaolpbjmdbjjajonkmmgekgo/)
+- **Chrome浏览器**：[Chrome插件下载](https://chromewebstore.google.com/detail/videoadguard/nmkkpflniidbbodhjhjaijadbccidbgi/)
 - **Firefox浏览器**：[Firefox插件下载](https://addons.mozilla.org/zh-CN/firefox/addon/videoadguard/)
 
 ### 油猴脚本版
