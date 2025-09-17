@@ -231,6 +231,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 渲染白名单列表
   function renderWhitelistItems() {
+    // 清空现有内容
+    whitelistList.innerHTML = '';
     // 安全地创建DOM元素
     whitelistConfig.whitelistedUPs.forEach(up => {
       const itemDiv = document.createElement('div');
