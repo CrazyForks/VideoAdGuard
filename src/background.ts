@@ -87,7 +87,8 @@ class ApiRequestHandler {
 
 // 音频转录处理器
 class AudioTranscriptionHandler {
-  private static readonly GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
+  private static readonly GROQ_OFFICIAL_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
+  private static readonly GROQ_PROXY_URL = 'https://ai-proxy.xiaobaozi.cn/api.groq.com/openai/v1/audio/transcriptions';
   private static readonly DEFAULT_MODEL = 'whisper-large-v3-turbo';
   private static readonly DEFAULT_RESPONSE_FORMAT = 'verbose_json';
 
@@ -103,6 +104,7 @@ class AudioTranscriptionHandler {
       console.log('【VideoAdGuard】[Background] 开始语音识别...');
 
       const { audioUrl, audioBytes, audioBlobUrl, fileInfo, apiKey, options } = data;
+      const allowProxyFallback = Boolean(options?.allowProxyFallback);
 
       // 验证API密钥
       if (!apiKey) {
@@ -111,7 +113,7 @@ class AudioTranscriptionHandler {
 
       // 如果仅提供了 URL（无 bytes / 无 blobUrl），直接走流式上传，避免二次缓冲
       if (audioUrl && !(audioBytes instanceof ArrayBuffer) && !audioBlobUrl) {
-        const result = await this.callGroqApiWithStream(audioUrl, fileInfo || {}, options || {}, apiKey);
+        const result = await this.callGroqApiWithStream(audioUrl, fileInfo || {}, options || {}, apiKey, allowProxyFallback);
         console.log('【VideoAdGuard】[Background] 语音识别成功(流)');
         sendResponse({ success: true, data: result });
         return;
@@ -124,7 +126,7 @@ class AudioTranscriptionHandler {
       console.log(`【VideoAdGuard】[Background] 准备上传音频，大小: ${sizeMB}MB`);
 
       // 使用Blob调用Groq API
-      const result = await this.callGroqApiWithBlob(builtBlob, fileInfo, options, apiKey);
+  const result = await this.callGroqApiWithBlob(builtBlob, fileInfo, options, apiKey, allowProxyFallback);
 
       console.log('【VideoAdGuard】[Background] 语音识别成功');
       sendResponse({ success: true, data: result });
@@ -182,37 +184,31 @@ class AudioTranscriptionHandler {
   /**
    * 使用Blob调用Groq API
    */
-  private static async callGroqApiWithBlob(audioBlob: Blob, fileInfo: any, options: any, apiKey: string): Promise<any> {
-    const formData = new FormData();
-
-    const file = new File([audioBlob], fileInfo.name, {
-      type: fileInfo.type,
+  private static async callGroqApiWithBlob(
+    audioBlob: Blob,
+    fileInfo: any,
+    options: any,
+    apiKey: string,
+    allowProxyFallback: boolean
+  ): Promise<any> {
+    const file = new File([audioBlob], fileInfo?.name || 'audio.m4a', {
+      type: fileInfo?.type || 'audio/m4a',
       lastModified: Date.now()
     });
 
-    formData.append('file', file);
-    formData.append('model', options?.model || this.DEFAULT_MODEL);
-    formData.append('response_format', options?.responseFormat || this.DEFAULT_RESPONSE_FORMAT);
-
-    const response = await fetch(this.GROQ_API_URL, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('【VideoAdGuard】[Background] Groq API错误:', errorText);
-      throw new Error(`Groq API调用失败: ${response.status} ${response.statusText} - ${errorText}`);
-    }
-
-    return await response.json();
+    return this.uploadWithFallback(() => this.buildTranscriptionFormData(file, options), apiKey, allowProxyFallback);
   }
 
   /**
    * 使用 URL 以流方式获取音频并直接构造表单上传 Groq
    */
-  private static async callGroqApiWithStream(audioUrl: string, fileInfo: any, options: any, apiKey: string): Promise<any> {
+  private static async callGroqApiWithStream(
+    audioUrl: string,
+    fileInfo: any,
+    options: any,
+    apiKey: string,
+    allowProxyFallback: boolean
+  ): Promise<any> {
     // 获取音频流
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
@@ -250,27 +246,77 @@ class AudioTranscriptionHandler {
       lastModified: Date.now()
     });
 
+    return this.uploadWithFallback(() => this.buildTranscriptionFormData(file, options), apiKey, allowProxyFallback);
+  }
+
+  private static buildTranscriptionFormData(file: File, options: any): FormData {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('model', options?.model || this.DEFAULT_MODEL);
     formData.append('response_format', options?.responseFormat || this.DEFAULT_RESPONSE_FORMAT);
 
-    // 调用 Groq API
-    const response = await fetch(this.GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('【VideoAdGuard】[Background] Groq API错误:', errorText);
-      throw new Error(`Groq API调用失败: ${response.status} ${response.statusText} - ${errorText}`);
+    if (options?.language) {
+      formData.append('language', options.language);
+    }
+    if (options?.temperature !== undefined) {
+      formData.append('temperature', String(options.temperature));
     }
 
-    return await response.json();
+    return formData;
+  }
+
+  private static async uploadWithFallback(
+    formDataFactory: () => FormData,
+    apiKey: string,
+    allowProxyFallback: boolean
+  ): Promise<any> {
+    const endpoints: Array<{ url: string; label: string }> = [
+      { url: this.GROQ_OFFICIAL_URL, label: '官方' }
+    ];
+
+    if (allowProxyFallback) {
+      endpoints.push({ url: this.GROQ_PROXY_URL, label: '代理' });
+    }
+
+    let lastError: Error | null = null;
+
+    for (let index = 0; index < endpoints.length; index++) {
+      const { url, label } = endpoints[index];
+      const isLastAttempt = index === endpoints.length - 1;
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+          body: formDataFactory()
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        if (label === '代理') {
+          console.log('【VideoAdGuard】[Background] Groq代理接口调用成功');
+        }
+
+        return await response.json();
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        lastError = err;
+
+        console.error(`【VideoAdGuard】[Background] Groq${label}接口调用失败:`, err.message);
+
+        if (!isLastAttempt) {
+          console.warn('【VideoAdGuard】[Background] 准备使用Groq代理接口作为回退...');
+          continue;
+        }
+
+        throw new Error(`Groq API调用失败: ${err.message}`);
+      }
+    }
+
+    throw new Error(`Groq API调用失败${lastError ? `: ${lastError.message}` : ''}`);
   }
 }
 

@@ -48,7 +48,7 @@ export class AudioService {
     const temp = new Blob([new Uint8Array(bytes)], { type: fileInfo.type || 'application/octet-stream' });
     const type = AudioService.normalizeAudioBlob(temp).type;
 
-    const { groqApiKey: apiKey } = await chrome.storage.local.get(['groqApiKey']);
+    const { groqApiKey: apiKey, enableGroqProxy } = await chrome.storage.local.get(['groqApiKey', 'enableGroqProxy']);
     if (!apiKey) throw new Error('未配置Groq API密钥，请在设置中配置');
 
     const response = await chrome.runtime.sendMessage({
@@ -57,7 +57,11 @@ export class AudioService {
         audioBytes: bytes,
         fileInfo: { name: fileInfo.name || 'audio.bin', type: type, size: bytes.byteLength },
         apiKey,
-        options: { model: 'whisper-large-v3-turbo', responseFormat: 'verbose_json' }
+        options: {
+          model: 'whisper-large-v3-turbo',
+          responseFormat: 'verbose_json',
+          allowProxyFallback: Boolean(enableGroqProxy)
+        }
       }
     });
     if (!response?.success) throw new Error(response?.error || '未知错误');

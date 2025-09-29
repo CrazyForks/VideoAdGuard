@@ -133,6 +133,10 @@
       </div>
       <input type="checkbox" id="enableAudioTranscription">
     </div>
+    <div class="form-group groq-proxy-field">
+      <label for="enableGroqProxy">官方接口失败时使用代理（无网络要求）</label>
+      <input type="checkbox" id="enableGroqProxy">
+    </div>
     <div class="form-group groqApiKey-field">
       <label for="groqApiKey">Groq 密钥：</label>
       <div class="input-with-icon">
@@ -527,6 +531,15 @@
     /* 当密码字段显示时添加适当的过渡效果 */
     .api-settings-card .apiKey-field {
       transition: opacity 0.3s, height 0.3s, margin 0.3s;
+    }
+
+    .groq-proxy-field {
+      display: none;
+      transition: opacity 0.3s ease;
+    }
+
+    body.audio-transcription-enabled .groq-proxy-field {
+      display: flex;
     }
 
     .whitelist-card {
