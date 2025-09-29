@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const groqApiKeyInput = document.getElementById("groqApiKey") as HTMLInputElement;
   const toggleGroqPasswordBtn = document.getElementById("toggleGroqApiKey") as HTMLInputElement;
   const enableAudioTranscriptionCheckbox = document.getElementById("enableAudioTranscription") as HTMLInputElement;
+  const enableGroqProxyCheckbox = document.getElementById("enableGroqProxy") as HTMLInputElement;
 
   // API URL 下拉框相关元素
   const apiUrlDropdown = document.getElementById("apiUrlDropdown") as HTMLButtonElement;
@@ -32,6 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const restrictedMode = restrictedModeCheckbox.checked;
     const groqApiKey = groqApiKeyInput.value.trim();
     const enableAudioTranscription = enableAudioTranscriptionCheckbox.checked;
+  const enableGroqProxy = enableAudioTranscription && enableGroqProxyCheckbox ? enableGroqProxyCheckbox.checked : false;
 
     // 基本验证
     if (!apiUrl) {
@@ -59,7 +61,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         autoSkipAd,
         restrictedMode,
         groqApiKey,
-        enableAudioTranscription
+        enableAudioTranscription,
+        enableGroqProxy
       });
     } catch (error) {
       console.warn('保存设置失败:', error);
@@ -150,6 +153,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function updateAudioTranscriptionState(enabled: boolean) {
+    document.body.classList.toggle('audio-transcription-enabled', enabled);
+    if (!enabled && enableGroqProxyCheckbox) {
+      enableGroqProxyCheckbox.checked = false;
+    }
+  }
+
+  enableAudioTranscriptionCheckbox.addEventListener('change', () => {
+    const enabled = enableAudioTranscriptionCheckbox.checked;
+    updateAudioTranscriptionState(enabled);
+    autoSaveSettings();
+  });
+
+  if (enableGroqProxyCheckbox) {
+    enableGroqProxyCheckbox.addEventListener('change', () => {
+      autoSaveSettings();
+    });
+  }
+
   // 加载已保存的设置
   const settings = await chrome.storage.local.get([
     "apiUrl",
@@ -161,6 +183,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "restrictedMode",
     "groqApiKey",
     "enableAudioTranscription",
+    "enableGroqProxy",
   ]);
 
   if (settings.apiUrl) {
@@ -189,8 +212,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (settings.groqApiKey) {
     groqApiKeyInput.value = settings.groqApiKey;
   }
-  if (settings.enableAudioTranscription) {
+  if (typeof settings.enableAudioTranscription === 'boolean') {
     enableAudioTranscriptionCheckbox.checked = settings.enableAudioTranscription;
+  }
+  updateAudioTranscriptionState(enableAudioTranscriptionCheckbox.checked);
+  if (enableGroqProxyCheckbox) {
+    enableGroqProxyCheckbox.checked = enableAudioTranscriptionCheckbox.checked
+      ? Boolean(settings.enableGroqProxy)
+      : false;
   }
 
   // 获取当前标签页的广告检测结果
@@ -231,6 +260,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 渲染白名单列表
   function renderWhitelistItems() {
+    // 清空现有内容
+    whitelistList.innerHTML = '';
     // 安全地创建DOM元素
     whitelistConfig.whitelistedUPs.forEach(up => {
       const itemDiv = document.createElement('div');
