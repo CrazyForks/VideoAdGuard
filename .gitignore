@@ -13,3 +13,6 @@ temp/
 
 VideoAdGuard.crx
 VideoAdGuard.pem
+
+# Lock files - keep only package-lock.json
+yarn.lock
