@@ -4,35 +4,36 @@ import { WhitelistService } from './services/whitelist';
 import { AudioService } from './services/audio';
 import { CacheService } from './services/cache';
 
-/**
- * 从大模型回复中提取并解析目标 JSON。
- * 1) 定位最大花括号块 2) 清理常见“智能引号/代码块”污染 3) JSON.parse
- * 4) 结构校验与修正 5) 失败则返回空模板
- */
-function parseAdResult(raw, captionsLength = 0) {
-  const EMPTY = { exist: false, good_name: [], index_lists: [] };
 
+export interface AdDetectionJSON {
+  exist: boolean;
+  good_name: string[];
+  index_lists: number[][];
+}
+
+/** 
+ * 从回复中安全抽取 JSON，做类型兜底、索引区间清洗与合并。
+ * @param raw  LLM 原始回复（可能带说明/反引号/中文引号）
+ * @param captionsLength  字幕条目数，用于索引边界修正
+ */
+export function parseAdResult(raw: string, captionsLength = 0): AdDetectionJSON {
+  const EMPTY: AdDetectionJSON = { exist: false, good_name: [], index_lists: [] };
   if (!raw || typeof raw !== "string") return EMPTY;
 
-  // 1) 去除代码块/反引号/前后空白
+  // 去掉代码块包裹 + 捕获最大花括号块
   let s = raw.trim()
-    .replace(/```[\s\S]*?```/g, (m) => m.replace(/```/g, "")) // 去掉 ``` 包裹但保留内部
-    .replace(/^[\s\S]*?({[\s\S]*})[\s\S]*$/m, "$1");          // 取到最大花括号块（贪婪）
+    .replace(/```[\s\S]*?```/g, (m) => m.replace(/```/g, ""))
+    .replace(/^[\s\S]*?({[\s\S]*})[\s\S]*$/m, "$1")
+    .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"') // 中文/弯引号 -> "
+    .replace(/[\u2018\u2019\u2032]/g, "'");
 
-  // 2) 统一引号（防止中文全角引号）
-  s = s
-    .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"') // 双引号变为 "
-    .replace(/[\u2018\u2019\u2032]/g, "'");            // 单引号保留为 '
-
-  // 3) 尝试直接 parse
-  let obj = null;
+  let obj: any = null;
   try {
     obj = JSON.parse(s);
-  } catch (_) {
-    // 4) 退一步：尝试匹配第一个 JSON 对象
+  } catch {
     const match = raw.match(/{[\s\S]*}/);
     if (match) {
-      let cand = match[0]
+      const cand = match[0]
         .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
         .replace(/[\u2018\u2019\u2032]/g, "'");
       try { obj = JSON.parse(cand); } catch { obj = null; }
@@ -40,16 +41,15 @@ function parseAdResult(raw, captionsLength = 0) {
   }
   if (!obj || typeof obj !== "object") return EMPTY;
 
-  // 5) 结构与类型兜底
-  const out = {
+  const out: AdDetectionJSON = {
     exist: typeof obj.exist === "boolean" ? obj.exist : false,
-    good_name: Array.isArray(obj.good_name) ? obj.good_name.filter(x => typeof x === "string") : [],
+    good_name: Array.isArray(obj.good_name) ? obj.good_name.filter((x: any) => typeof x === "string") : [],
     index_lists: Array.isArray(obj.index_lists) ? obj.index_lists : []
   };
 
-  // 6) index_lists 规范化：二维整型区间、范围合法、去重合并、排序
+  // 索引清洗：二维整型区间，边界修正，排序合并
   const N = Math.max(0, captionsLength | 0);
-  const cleaned = [];
+  const cleaned: number[][] = [];
   for (const seg of out.index_lists) {
     if (!Array.isArray(seg) || seg.length !== 2) continue;
     let [a, b] = seg;
@@ -60,26 +60,23 @@ function parseAdResult(raw, captionsLength = 0) {
     if (a > b) [a, b] = [b, a];
     cleaned.push([a, b]);
   }
-  // 合并重叠区间 & 排序
   cleaned.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
-  const merged = [];
+  const merged: number[][] = [];
   for (const seg of cleaned) {
     if (!merged.length || seg[0] > merged[merged.length - 1][1] + 1) {
-      merged.push(seg);
+      merged.push([seg[0], seg[1]]);
     } else {
       merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], seg[1]);
     }
   }
   out.index_lists = merged;
 
-  // 7) 若不存在任何合规片段且没有商品名，自动置 exist=false
+  // 没有有效片段则强制 exist=false
   if (!out.index_lists.length && out.exist === true) {
     out.exist = false;
   }
-
   return out;
-};
-
+}
 
 class AdDetector {
   public static adDetectionResult: string | null = null; // 状态存储
