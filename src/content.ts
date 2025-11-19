@@ -4,6 +4,80 @@ import { WhitelistService } from './services/whitelist';
 import { AudioService } from './services/audio';
 import { CacheService } from './services/cache';
 
+
+export interface AdDetectionJSON {
+  exist: boolean;
+  good_name: string[];
+  index_lists: number[][];
+}
+
+/** 
+ * 从回复中安全抽取 JSON，做类型兜底、索引区间清洗与合并。
+ * @param raw  LLM 原始回复（可能带说明/反引号/中文引号）
+ * @param captionsLength  字幕条目数，用于索引边界修正
+ */
+export function parseAdResult(raw: string, captionsLength = 0): AdDetectionJSON {
+  const EMPTY: AdDetectionJSON = { exist: false, good_name: [], index_lists: [] };
+  if (!raw || typeof raw !== "string") return EMPTY;
+
+  // 去掉代码块包裹 + 捕获最大花括号块
+  let s = raw.trim()
+    .replace(/```[\s\S]*?```/g, (m) => m.replace(/```/g, ""))
+    .replace(/^[\s\S]*?({[\s\S]*})[\s\S]*$/m, "$1")
+    .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"') // 中文/弯引号 -> "
+    .replace(/[\u2018\u2019\u2032]/g, "'");
+
+  let obj: any = null;
+  try {
+    obj = JSON.parse(s);
+  } catch {
+    const match = raw.match(/{[\s\S]*}/);
+    if (match) {
+      const cand = match[0]
+        .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
+        .replace(/[\u2018\u2019\u2032]/g, "'");
+      try { obj = JSON.parse(cand); } catch { obj = null; }
+    }
+  }
+  if (!obj || typeof obj !== "object") return EMPTY;
+
+  const out: AdDetectionJSON = {
+    exist: typeof obj.exist === "boolean" ? obj.exist : false,
+    good_name: Array.isArray(obj.good_name) ? obj.good_name.filter((x: any) => typeof x === "string") : [],
+    index_lists: Array.isArray(obj.index_lists) ? obj.index_lists : []
+  };
+
+  // 索引清洗：二维整型区间，边界修正，排序合并
+  const N = Math.max(0, captionsLength | 0);
+  const cleaned: number[][] = [];
+  for (const seg of out.index_lists) {
+    if (!Array.isArray(seg) || seg.length !== 2) continue;
+    let [a, b] = seg;
+    if (typeof a !== "number" || typeof b !== "number") continue;
+    a = Math.max(0, Math.floor(a));
+    b = Math.max(0, Math.floor(b));
+    if (N > 0) { a = Math.min(a, N - 1); b = Math.min(b, N - 1); }
+    if (a > b) [a, b] = [b, a];
+    cleaned.push([a, b]);
+  }
+  cleaned.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  const merged: number[][] = [];
+  for (const seg of cleaned) {
+    if (!merged.length || seg[0] > merged[merged.length - 1][1] + 1) {
+      merged.push([seg[0], seg[1]]);
+    } else {
+      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], seg[1]);
+    }
+  }
+  out.index_lists = merged;
+
+  // 没有有效片段则强制 exist=false
+  if (!out.index_lists.length && out.exist === true) {
+    out.exist = false;
+  }
+  return out;
+}
+
 class AdDetector {
   public static adDetectionResult: string | null = null; // 状态存储
   private static adTimeRanges: number[][] = []; // 存储广告时间段
@@ -316,7 +390,7 @@ class AdDetector {
               .replace(/```/g, '')
           : JSON.stringify(rawResult);
 
-        result = JSON.parse(cleanJson);
+        result = parseAdResult(cleanJson);
 
         // 验证返回数据格式
         if (typeof result.exist !== 'boolean' || !Array.isArray(result.index_lists)) {
