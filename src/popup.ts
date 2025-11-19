@@ -22,6 +22,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const apiUrlDropdown = document.getElementById("apiUrlDropdown") as HTMLButtonElement;
   const apiUrlDropdownMenu = document.getElementById("apiUrlDropdownMenu") as HTMLDivElement;
 
+  // 默认勾选启用和自动跳过广告，若读取到存储值会覆盖
+  enableExtensionCheckbox.checked = true;
+  autoSkipAdCheckbox.checked = true;
+
   // 自动保存函数
   async function autoSaveSettings() {
     const apiUrl = apiUrlInput.value.trim();
@@ -38,17 +42,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 基本验证
     if (!apiUrl) {
       console.warn('API地址为空');
-      return;
     }
 
     if (!enableLocalOllama && !apiKey) {
       console.warn('API密钥为空');
-      return;
     }
 
     if (!model) {
       console.warn('模型名称为空');
-      return;
     }
 
     try {
@@ -195,7 +196,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (settings.model) {
     modelInput.value = settings.model;
   }
-  if (settings.enableExtension) {
+  if (typeof settings.enableExtension === 'boolean') {
     enableExtensionCheckbox.checked = settings.enableExtension;
   }
   if (settings.enableLocalOllama) {
@@ -203,7 +204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 使用CSS类而不是直接修改样式
     document.body.classList.add('ollama-enabled');
   }
-  if (settings.autoSkipAd) {
+  if (typeof settings.autoSkipAd === 'boolean') {
     autoSkipAdCheckbox.checked = settings.autoSkipAd;
   }
   if (settings.restrictedMode) {
