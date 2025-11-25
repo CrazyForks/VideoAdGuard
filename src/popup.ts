@@ -134,6 +134,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // 启用插件复选框变化时立即保存
+  enableExtensionCheckbox.addEventListener('change', () => {
+    autoSaveSettings();
+  });
+
+  // 自动跳过广告复选框变化时立即保存
+  autoSkipAdCheckbox.addEventListener('change', () => {
+    autoSaveSettings();
+  });
+
+  // 限制模式复选框变化时立即保存
+  restrictedModeCheckbox.addEventListener('change', () => {
+    autoSaveSettings();
+  });
+
   localOllamaCheckbox.addEventListener('change', toggleOllamaField);
   function toggleOllamaField(e: Event) {
     const target = e.target as HTMLInputElement;
@@ -144,6 +159,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       document.body.classList.remove('ollama-enabled');
     }
+    // 保存设置
+    autoSaveSettings();
   }
 
   // 添加Groq API密钥切换功能
