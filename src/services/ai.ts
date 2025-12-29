@@ -103,7 +103,16 @@ export class AIService {
           format: "json",
         }
       });
-      return JSON.parse(data.message.content);
+
+      if (!data?.message?.content) {
+        throw new Error(JSON.stringify(data));
+      }
+
+      try {
+        return JSON.parse(data.message.content);
+      } catch (e) {
+        throw new Error(JSON.stringify(data));
+      }
     } else {
       const apiKey = await this.getApiKey();
       if (!apiKey) {
@@ -167,7 +176,16 @@ export class AIService {
           format: "json",
         }
       });
-      return JSON.parse(data.message.content);
+
+      if (!data?.message?.content) {
+        throw new Error(JSON.stringify(data));
+      }
+
+      try {
+        return JSON.parse(data.message.content);
+      } catch (e) {
+        throw new Error(JSON.stringify(data));
+      }
     } else {
       const apiKey = await this.getApiKey();
       if (!apiKey) {
