@@ -26,6 +26,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 ## News
 
+- v1.3.0 重构LLM模块，支持更多模型，包括Coding Plan
 - v1.2.9~v1.2.11 添加手动控制广告区间，修复已知bug
 - v1.2.8 提供Groq代理服务
 - v1.2.7 适配Firefox浏览器
@@ -41,13 +42,13 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 ## 功能特点
 
 - 🎯 **精准识别**：采用大语言模型分析视频字幕，准确定位植入广告内容
-- 🎵 **音频识别**：支持无字幕视频的音频识别检测，使用免费的Groq服务商（v1.2.3新增）
+- 🎵 **音频识别**：支持无字幕视频的音频识别检测，使用免费的Groq服务商
 - 🚀 **便捷操作**：检测到广告后自动显示跳过按钮，一键跳过广告片段
-- 🔄 **自动跳过**：支持自动跳过已识别的广告内容（v1.2.0新增）
-- 💾 **智能缓存**：本地缓存检测结果，大幅提升重复访问速度（v1.2.3新增）
+- 🔄 **自动跳过**：支持自动跳过已识别的广告内容
+- 💾 **智能缓存**：本地缓存检测结果，大幅提升重复访问速度
 - 🌈 **广泛兼容**：支持多种主流浏览器，包括Edge、Chrome等
 - ⚙️ **灵活定制**：支持多种AI模型接入，包括智谱AI、OpenAI、DeepSeek等
-- 🏠 **本地部署**：支持本地Ollama模型，保护隐私数据（v1.1.3新增）
+- 🏠 **本地部署**：支持本地Ollama模型，保护隐私数据
 
 ## 安装方法
 
@@ -112,9 +113,9 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 | 通义千问         | ✅       | [阿里云](https://bailian.console.aliyun.com/)              |
 | Gemini           | ✅       | [Gemini](https://ai.google.dev/)                           |
 | Grok             | ✅       | [Grok](https://console.x.ai/)                              |
-| Anthropic Claude | ❓       | [Claude](https://console.anthropic.com/)                   |
-| MiniMax          | ❓       | [MiniMax](https://api.minimax.chat/)                       |
-| 豆包             | ❓       | [火山引擎](https://www.volcengine.com/)                    |
+| Anthropic Claude | ✅       | [Claude](https://console.anthropic.com/)                   |
+| MiniMax          | ✅       | [MiniMax](https://api.minimax.chat/)                       |
+| 豆包             | ✅       | [火山引擎](https://www.volcengine.com/)                    |
 
 | 本地服务 | 测试结果 | 注意事项                                          |
 | -------- | -------- | ------------------------------------------------- |
