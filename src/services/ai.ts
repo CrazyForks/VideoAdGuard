@@ -1,214 +1,78 @@
+import { normalizeErrorForUser } from '../utils/errors';
+import { logger } from '../utils/logger';
+import { LLMInvokePayload, LLMInvokeResult, LLMResponseFormat } from './llm/types';
+
+interface VideoInfo {
+  title: string;
+  topComment: string | null;
+  addtionMessages: Record<string, Record<string, any>> | null;
+  captions: Record<number, string>;
+}
+
+interface RestrictedVideoInfo extends VideoInfo {
+  goodNames?: string[];
+}
+
+interface LLMInvokeResponse {
+  success: boolean;
+  data?: LLMInvokeResult;
+  error?: string;
+}
+
 export class AIService {
-  private static async makeRequest(videoInfo: any, url: string, model: string,
-    config: {
-    headers: Record<string, string>,
-    bodyExtra?: Record<string, any>
-  }) {
-    const messageBody = {
-      model: model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "你是一个专业的视频内容分析师，专门识别视频中的植入广告。只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告。",
-        },
-        {
-          role: "user",
-          content: this.buildPrompt(videoInfo),
-        },
-      ],
+  private static async invokeModel(
+    systemPrompt: string,
+    userPrompt: string,
+    responseFormat: LLMResponseFormat,
+    maxTokens: number = 8192
+  ): Promise<string> {
+    const payload: LLMInvokePayload = {
+      systemPrompt,
+      userPrompt,
+      responseFormat,
+      maxTokens,
       temperature: 0,
-      max_tokens: 1024,
-      stream: false,
-      ...config.bodyExtra,
     };
 
-    const response = await chrome.runtime.sendMessage({
-      url: url,
-      headers: config.headers,
-      body: messageBody,
-    });
+    try {
+      const response = (await chrome.runtime.sendMessage({
+        type: 'LLM_INVOKE',
+        payload,
+      })) as LLMInvokeResponse;
 
-    console.log("【VideoAdGuard】API请求已发送");
-    if (response.success) {
-      console.log("【VideoAdGuard】收到大模型响应:", response.data);
-      return response.data;
-    } else {
-      console.warn("【VideoAdGuard】请求失败:", response.error);
-      throw new Error(response.error);
+      if (!response?.success) {
+        throw new Error(response?.error || '模型请求失败，请检查配置后重试');
+      }
+
+      const text = response?.data?.text;
+      if (typeof text !== 'string' || !text.trim()) {
+        throw new Error('模型未返回有效内容，请更换模型或稍后重试');
+      }
+
+      return text.trim();
+    } catch (error) {
+      logger.debug('【VideoAdGuard】模型调用失败:', error);
+      throw new Error(normalizeErrorForUser(error, 'llm'));
     }
   }
 
-  /**
-   * 限制模式下的请求方法，使用不同的提示词
-   */
-  private static async makeRequestRestricted(videoInfo: any, url: string, model: string,
-    config: {
-    headers: Record<string, string>,
-    bodyExtra?: Record<string, any>
-  }) {
-    const messageBody = {
-      model: model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "你是一个专业的视频内容分析师，专门识别视频中的植入广告。在限制模式下，你需要更加谨慎和精确地判断广告内容。只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告。",
-        },
-        {
-          role: "user",
-          content: this.buildRestrictedPrompt(videoInfo),
-        },
-      ],
-      temperature: 0,
-      max_tokens: 1024,
-      stream: false,
-      ...config.bodyExtra,
-    };
-
-    const response = await chrome.runtime.sendMessage({
-      url: url,
-      headers: config.headers,
-      body: messageBody,
-    });
-
-    console.log("【VideoAdGuard】限制模式API请求已发送");
-    if (response.success) {
-      console.log("【VideoAdGuard】限制模式收到大模型响应:", response.data);
-      return response.data;
-    } else {
-      console.warn("【VideoAdGuard】限制模式请求失败:", response.error);
-      throw new Error(response.error);
-    }
+  public static async detectAd(videoInfo: VideoInfo): Promise<string> {
+    return this.invokeModel(
+      '你是一个专业的视频内容分析师，专门识别视频中的植入广告。只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告。',
+      this.buildPrompt(videoInfo),
+      'json'
+    );
   }
 
-  public static async detectAd(videoInfo: {
-    title: string;
-    topComment: string | null;
-    addtionMessages: Record<string, Record<string, any>> | null;
-    captions: Record<number, string>;
-  }) {
-    console.log("【VideoAdGuard】开始分析视频信息:", videoInfo);
-    const url = await this.getApiUrl();
-    const model = await this.getModel();
-    const enableLocalOllama = await this.getEnableLocalOllama();
-
-    if (enableLocalOllama) {
-      const data = await this.makeRequest(videoInfo, url, model,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        bodyExtra: {
-          format: "json",
-        }
-      });
-      return JSON.parse(data.message.content);
-    } else {
-      const apiKey = await this.getApiKey();
-      if (!apiKey) {
-        throw new Error("未设置API密钥");
-      }
-      
-
-      const isOpenAI = url.includes("api.openai.com");
-      const isAzureOpenAI = url.includes("openai.azure.com");
-      const isZhipuAI = url.includes("open.bigmodel.cn");
-      const isDeepseek = url.includes("api.deepseek.com");
-      const isQwen = url.includes("aliyuncs.com");
-
-      const bodyExtra: any = {};
-
-      // 仅对支持 JSON 模式的模型添加 response_format
-      if (isOpenAI || isAzureOpenAI || isZhipuAI || isDeepseek || isQwen) {
-        bodyExtra.response_format = { "type": "json_object" };
-      }
-
-      if(isZhipuAI && model.includes("glm-4.5")) {
-        bodyExtra.thinking = { "type": "disabled" };
-      }
-
-
-      const data = await this.makeRequest(videoInfo, url, model,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        bodyExtra: Object.keys(bodyExtra).length ? bodyExtra : undefined,
-      });
-      return data.choices[0].message.content;
-    }
+  public static async detectAdRestricted(videoInfo: RestrictedVideoInfo): Promise<string> {
+    return this.invokeModel(
+      '你是一个专业的视频内容分析师，专门识别视频中的植入广告。在限制模式下，你需要更加谨慎和精确地判断广告内容。只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告。',
+      this.buildRestrictedPrompt(videoInfo),
+      'json'
+    );
   }
 
-  /**
-   * 限制模式下的广告检测方法
-   * 使用不同的提示词进行更精确的广告检测
-   */
-  public static async detectAdRestricted(videoInfo: {
-    title: string;
-    topComment: string | null;
-    addtionMessages: Record<string, Record<string, any>> | null;
-    captions: Record<number, string>;
-    goodNames?: string[];
-  }) {
-    console.log("【VideoAdGuard】限制模式：开始分析视频信息:", videoInfo);
-    const url = await this.getApiUrl();
-    const model = await this.getModel();
-    const enableLocalOllama = await this.getEnableLocalOllama();
-
-    if (enableLocalOllama) {
-      const data = await this.makeRequestRestricted(videoInfo, url, model,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        bodyExtra: {
-          format: "json",
-        }
-      });
-      return JSON.parse(data.message.content);
-    } else {
-      const apiKey = await this.getApiKey();
-      if (!apiKey) {
-        throw new Error("未设置API密钥");
-      }
-
-      const isOpenAI = url.includes("api.openai.com");
-      const isAzureOpenAI = url.includes("openai.azure.com");
-      const isZhipuAI = url.includes("open.bigmodel.cn");
-      const isDeepseek = url.includes("api.deepseek.com");
-      const isQwen = url.includes("aliyuncs.com");
-
-      const bodyExtra: any = {};
-
-      // 仅对支持 JSON 模式的模型添加 response_format
-      if (isOpenAI || isAzureOpenAI || isZhipuAI || isDeepseek || isQwen) {
-        bodyExtra.response_format = { "type": "json_object" };
-      }
-
-      if(isZhipuAI && model.includes("glm-4.5")) {
-        bodyExtra.thinking = { "type": "disabled" };
-      }
-
-      const data = await this.makeRequestRestricted(videoInfo, url, model,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        bodyExtra: Object.keys(bodyExtra).length ? bodyExtra : undefined,
-      });
-      return data.choices[0].message.content;
-    }
-  }
-
-  private static buildPrompt(videoInfo: {
-    title: string;
-    topComment: string | null;
-    addtionMessages: Record<string, Record<string, any>> | null;
-    captions: Record<number, string>;
-  }): string {
+  private static buildPrompt(videoInfo: VideoInfo): string {
     const prompt = `你需要分析视频内容，识别其中的植入广告。
 
 视频信息：
@@ -231,26 +95,15 @@ export class AIService {
   "good_name": <list[string]. 广告的商品名称>,
   "index_lists": <list[list[int]]. 二维数组，每一行是[start, end]，表示一段*完整*广告的开头结尾字幕index，包含商品介绍前的引入和结尾后的推荐性、煽动购买的语言>
 }`;
-    console.log('【VideoAdGuard】构建提示词成功:', {prompt});
+    logger.debug('【VideoAdGuard】构建提示词成功:', { prompt });
     return prompt;
   }
 
-  /**
-   * 限制模式下的提示词构建方法
-   * 使用更严格的判断标准
-   */
-  private static buildRestrictedPrompt(videoInfo: {
-    title: string;
-    topComment: string | null;
-    addtionMessages: Record<string, Record<string, any>> | null;
-    captions: Record<number, string>;
-    goodNames?: string[];
-  }): string {
-    const goodNamesText = videoInfo.goodNames && videoInfo.goodNames.length > 0
-      ? videoInfo.goodNames.join('、')
-      : '无';
+  private static buildRestrictedPrompt(videoInfo: RestrictedVideoInfo): string {
+    const goodNamesText =
+      videoInfo.goodNames && videoInfo.goodNames.length > 0 ? videoInfo.goodNames.join('、') : '无';
 
-const prompt = `你需要分析视频内容，识别其中的植入广告。
+    const prompt = `你需要分析视频内容，识别其中的植入广告。
 
 视频信息：
 标题：${videoInfo.title}
@@ -274,106 +127,21 @@ const prompt = `你需要分析视频内容，识别其中的植入广告。
   "good_name": <list[string]. 广告的商品名称，注意仅返回字幕中存在且与预提取的商品名称相关的商品>,
   "index_lists": <list[list[int]]. 二维数组，每一行是[start, end]，表示一段*完整*广告的开头结尾字幕index，包含商品介绍前的引入和结尾后的推荐性、煽动购买的语言>
 }`;
-    console.log('【VideoAdGuard】限制模式构建提示词成功:', {prompt});
+    logger.debug('【VideoAdGuard】限制模式构建提示词成功:', { prompt });
     return prompt;
   }
 
-  /**
-   * 根据链接标题提取商品名称
-   */
   public static async extractProductName(linkTitle: string): Promise<string> {
-    console.log("【VideoAdGuard】开始提取商品名称");
-    const url = await this.getApiUrl();
-    const model = await this.getModel();
-    const enableLocalOllama = await this.getEnableLocalOllama();
-
-    const messageBody = {
-      model: model,
-      messages: [
-        {
-          role: "system",
-          content: "你是商品名称提取专家。从链接标题中提取核心商品名称，去除修饰词、营销词汇，只保留商品的本质名称。"
-        },
-        {
-          role: "user",
-          content: `链接标题：${linkTitle}\n\n请提取其中的核心商品名称，只返回纯文本的商品名称，不要解释。`
-        }
-      ],
-      temperature: 0,
-      max_tokens: 100,
-      stream: false
-    };
-
-    if (enableLocalOllama) {
-      const response = await chrome.runtime.sendMessage({
-        url: url,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: messageBody,
-      });
-
-      if (response.success) {
-        console.log("【VideoAdGuard】商品名称提取成功:", response.data);
-        return JSON.parse(response.data.message.content);
-      } else {
-        console.warn("【VideoAdGuard】商品名称提取失败:", response.error);
-        throw new Error(response.error);
-      }
-    } else {
-      const apiKey = await this.getApiKey();
-      if (!apiKey) {
-        throw new Error("未设置API密钥");
-      }
-
-      const isOpenAI = url.includes("api.openai.com");
-      const isAzureOpenAI = url.includes("openai.azure.com");
-      const isZhipuAI = url.includes("open.bigmodel.cn");
-      const isDeepseek = url.includes("api.deepseek.com");
-      const isQwen = url.includes("aliyuncs.com");
-
-      const bodyExtra: any = {};
-
-      if(isZhipuAI && model.includes("glm-4.5")) {
-        bodyExtra.thinking = { "type": "disabled" };
-      }
-
-      const response = await chrome.runtime.sendMessage({
-        url: url,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: { ...messageBody, ...bodyExtra },
-      });
-
-      if (response.success) {
-        console.log("【VideoAdGuard】商品名称提取成功:", response.data);
-        return response.data.choices[0].message.content.trim();
-      } else {
-        console.warn("【VideoAdGuard】商品名称提取失败:", response.error);
-        throw new Error(response.error);
-      }
-    }
-  }
-
-  private static async getApiUrl(): Promise<string> {
-    const result = await chrome.storage.local.get('apiUrl');
-    return result.apiUrl || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-  }
-
-  private static async getApiKey(): Promise<string | null> {
-    const result = await chrome.storage.local.get('apiKey');
-    return result.apiKey || null;
-  }
-
-  private static async getModel(): Promise<string> {
-    const result = await chrome.storage.local.get('model');
-    return result.model || 'glm-4.5-flash';
-  }
-
-  private static async getEnableLocalOllama(): Promise<boolean> {
-    const result = await chrome.storage.local.get("enableLocalOllama");
-    return result.enableLocalOllama || false;
+    const systemPrompt =
+      '你是商品名称提取专家。从链接标题中提取核心商品名称，去除修饰词、营销词汇，只保留商品的本质名称。';
+    const userPrompt = `链接标题：${linkTitle}\n\n请提取其中的核心商品名称，只返回纯文本的商品名称，不要解释。`;
+    const text = await this.invokeModel(systemPrompt, userPrompt, 'text', 120);
+    return text
+      .replace(/^```[\w-]*\s*/i, '')
+      .replace(/```$/i, '')
+      .trim()
+      .replace(/^["'`]/, '')
+      .replace(/["'`]$/, '')
+      .trim();
   }
 }

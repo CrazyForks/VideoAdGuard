@@ -62,7 +62,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 ### 油猴脚本版
 
-**注意**：油猴版本更新不及时，如果是chromium内核浏览器推荐采用插件版
+**注意**：油猴版本由于功能限制后续不维护，chromium内核浏览器推荐采用插件版
 
 1. 安装[篡改猴插件](https://www.tampermonkey.net/)
 2. 从[GreasyFork](https://greasyfork.org/zh-CN/scripts/531743-b%E7%AB%99%E8%A7%86%E9%A2%91%E6%A4%8D%E5%85%A5%E5%B9%BF%E5%91%8A%E6%A3%80%E6%B5%8B%E5%99%A8-videoadguard/)安装脚本
@@ -85,41 +85,21 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 ### 大语言模型API（必需）
 
-测试不同大模型的该项目上的效果，可选择 302.AI，立即[注册](https://share.302.ai/ckUgCA)获取$1赠金
+插件支持多种SDK接入方式，可在设置页面中选择：
 
-- **API地址**：`https://api.302.ai/v1/chat/completions`
-- **模型名称**：[模型列表](https://302.ai/product/list?cate=api&tag=%E8%AF%AD%E8%A8%80%E5%A4%A7%E6%A8%A1%E5%9E%8B)
-- **API密钥**：需要在[302.AI](https://302.ai/apis/list)注册并获取（输入邀请码 `ckUgCA`  获取$1赠金）
+- **OpenAI 兼容**：适用于 OpenAI、智谱AI、MiniMax、Kimi、DeepSeek、硅基流动、阿里云百炼、火山方舟、阶跃星辰、百度千帆、302.AI 等
+- **Anthropic 兼容**：适用于 Claude、智谱AI、MiniMax 等
+- **自定义 Fetch**：适用于 Ollama、LM Studio、vLLM 等本地模型
 
-免费体验可选择 智谱AI glm-4.5-flash 模型
+设置页面提供多平台预设，一键配置即可使用。
 
-- **API地址**：`https://open.bigmodel.cn/api/paas/v4/chat/completions`
-- **模型名称**：`glm-4.5-flash`
-- **API密钥**：需要在[智谱AI平台](https://bigmodel.cn/usercenter/proj-mgmt/apikeys)注册并获取
+| SDK类型 | 支持平台                                          |
+| ------- | ------------------------------------------------- |
+| OpenAI 兼容 | 智谱AI、MiniMax、Kimi、DeepSeek、硅基流动、OpenRouter、OpenAI、Gemini、Grok、腾讯混元、阿里云百炼、火山方舟、阶跃星辰、百度千帆、302.AI、Requesty API 等 |
+| Anthropic 兼容 | Claude、智谱AI、MiniMax、腾讯云、阿里云、火山引擎、百度千帆 等 |
+| 自定义 Fetch | Ollama、LM Studio、vLLM、llama.cpp、LocalAI、Xinference、FastChat、Jan、One API 等 |
 
-插件兼容几乎所有大语言模型。目前我们已经测试了部分模型，但还需要更多用户的测试反馈。如果您使用了下表中的模型，请通过GitHub Issues告诉我们您的使用体验，帮助我们完善兼容性列表。
-
-| API集成平台 | 测试结果 | API密钥官网                                      |
-| ----------- | -------- | ------------------------------------------------ |
-| 302.AI      | ✅       | [302.AI](https://share.302.ai/ckUgCA)               |
-| 硅基流动    | ✅       | [硅基流动](https://cloud.siliconflow.cn/i/VWOdVvvM) |
-| 云雾API     | ✅       | [云雾API](https://yunwu.ai/register?aff=btu9)       |
-
-| 模型名称         | 测试结果 | API密钥官网                                             |
-| ---------------- | -------- | ------------------------------------------------------- |
-| GLM              | ✅       | [智谱AI](https://bigmodel.cn/usercenter/proj-mgmt/apikeys) |
-| DeepSeek         | ✅       | [DeepSeek](https://platform.deepseek.com/api_keys)         |
-| OpenAI           | ✅       | [OpenAI](https://openai.com/api/)                          |
-| 通义千问         | ✅       | [阿里云](https://bailian.console.aliyun.com/)              |
-| Gemini           | ✅       | [Gemini](https://ai.google.dev/)                           |
-| Grok             | ✅       | [Grok](https://console.x.ai/)                              |
-| Anthropic Claude | ✅       | [Claude](https://console.anthropic.com/)                   |
-| MiniMax          | ✅       | [MiniMax](https://api.minimax.chat/)                       |
-| 豆包             | ✅       | [火山引擎](https://www.volcengine.com/)                    |
-
-| 本地服务 | 测试结果 | 注意事项                                          |
-| -------- | -------- | ------------------------------------------------- |
-| Ollama   | ✅       | 因为跨域请求，需要设置环境变量 OLLAMA_ORIGINS = * |
+> **注意**：使用本地模型时，如遇跨域问题，需设置环境变量，如 `OLLAMA_ORIGINS = *`
 
 ### 音频识别API（可选）
 

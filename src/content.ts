@@ -3,6 +3,8 @@ import { AIService } from './services/ai';
 import { WhitelistService } from './services/whitelist';
 import { AudioService } from './services/audio';
 import { CacheService } from './services/cache';
+import { normalizeErrorForUser } from './utils/errors';
+import './utils/logger';
 
 // 新增：广告片段接口，用于支持交互状态
 interface AdSegment {
@@ -387,7 +389,9 @@ class AdDetector {
             }
           } catch (error) {
             console.log('【VideoAdGuard】音频识别失败:', error);
-            this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '音频分析失败：' + (error as Error).message;
+            this.adDetectionResult =
+              (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') +
+              normalizeErrorForUser(error, 'audio');
           }
         } else {
           console.log('【VideoAdGuard】音频识别功能未启用');
@@ -546,7 +550,9 @@ class AdDetector {
 
     } catch (error) {
       console.warn('【VideoAdGuard】AI分析失败:', error);
-      this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + 'AI分析失败：' + (error as Error).message;
+      this.adDetectionResult =
+        (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') +
+        normalizeErrorForUser(error, 'detection');
       this.removeAutoSkipListener();
     }
   }

@@ -1,0 +1,35 @@
+export type LLMProvider = 'openai' | 'anthropic' | 'custom_fetch';
+
+export type LLMResponseFormat = 'json' | 'text';
+
+export interface LLMInvokePayload {
+  systemPrompt: string;
+  userPrompt: string;
+  responseFormat: LLMResponseFormat;
+  maxTokens: number;
+  temperature: number;
+}
+
+export interface LLMInvokeResult {
+  text: string;
+  provider: LLMProvider;
+  model: string;
+  requestId?: string;
+}
+
+export interface StoredLLMSettings {
+  provider?: LLMProvider | 'compatible' | 'ollama';
+  baseUrl?: string;
+  apiUrl?: string;
+  apiKey?: string;
+  model?: string;
+  enableLocalOllama?: boolean;
+}
+
+export interface ResolvedLLMSettings {
+  provider: LLMProvider;
+  apiUrl: string;
+  apiKey: string | null;
+  model: string;
+  baseUrl: string;
+}
