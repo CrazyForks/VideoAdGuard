@@ -204,7 +204,7 @@ export function normalizeErrorForUser(error: unknown, context: UserErrorContext 
     return '当前接口或模型不支持该请求参数，请更换模型或接口';
   }
 
-  if (includesAny(text, ['Base URL', 'base url', 'chat/completions', '/v1/messages', 'unsupported protocol', 'invalid url', 'only absolute urls are supported'])) {
+  if (includesAny(text, ['base url', 'unsupported protocol', 'invalid url', 'only absolute urls are supported'])) {
     return '接口地址无效，请检查 Base URL 和 SDK 选择';
   }
 
@@ -220,8 +220,8 @@ export function normalizeErrorForUser(error: unknown, context: UserErrorContext 
     return '请求过于频繁或额度不足，请稍后再试';
   }
 
-  if (includesAny(text, ['500', '502', '503', '504', 'bad gateway', 'service unavailable'])) {
-    return '服务暂时不可用，请稍后重试';
+  if (includesAny(text, ['529', 'overloaded', 'capacity', '500', '502', '503', '504', 'bad gateway', 'service unavailable'])) {
+    return '模型上游服务暂时不可用，请稍后重试';
   }
 
   if (includesAny(text, ['timeout', 'timed out', 'failed to fetch', 'fetch failed', 'econnrefused', 'enotfound', 'networkerror', 'connection error', 'apiconnectionerror', 'socket hang up'])) {

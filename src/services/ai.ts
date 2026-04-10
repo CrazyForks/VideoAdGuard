@@ -1,5 +1,4 @@
 import { normalizeErrorForUser } from '../utils/errors';
-import { logger } from '../utils/logger';
 import { LLMInvokePayload, LLMInvokeResult, LLMResponseFormat } from './llm/types';
 
 interface VideoInfo {
@@ -51,7 +50,7 @@ export class AIService {
 
       return text.trim();
     } catch (error) {
-      logger.debug('【VideoAdGuard】模型调用失败:', error);
+      console.log('【VideoAdGuard】模型调用失败:', error);
       throw new Error(normalizeErrorForUser(error, 'llm'));
     }
   }
@@ -95,7 +94,7 @@ export class AIService {
   "good_name": <list[string]. 广告的商品名称>,
   "index_lists": <list[list[int]]. 二维数组，每一行是[start, end]，表示一段*完整*广告的开头结尾字幕index，包含商品介绍前的引入和结尾后的推荐性、煽动购买的语言>
 }`;
-    logger.debug('【VideoAdGuard】构建提示词成功:', { prompt });
+    console.log('【VideoAdGuard】构建提示词成功:', { prompt });
     return prompt;
   }
 
@@ -127,7 +126,7 @@ export class AIService {
   "good_name": <list[string]. 广告的商品名称，注意仅返回字幕中存在且与预提取的商品名称相关的商品>,
   "index_lists": <list[list[int]]. 二维数组，每一行是[start, end]，表示一段*完整*广告的开头结尾字幕index，包含商品介绍前的引入和结尾后的推荐性、煽动购买的语言>
 }`;
-    logger.debug('【VideoAdGuard】限制模式构建提示词成功:', { prompt });
+    console.log('【VideoAdGuard】限制模式构建提示词成功:', { prompt });
     return prompt;
   }
 

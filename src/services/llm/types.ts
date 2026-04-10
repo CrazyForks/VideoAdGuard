@@ -18,7 +18,7 @@ export interface LLMInvokeResult {
 }
 
 export interface StoredLLMSettings {
-  provider?: LLMProvider | 'compatible' | 'ollama';
+  provider?: LLMProvider;
   baseUrl?: string;
   apiUrl?: string;
   apiKey?: string;

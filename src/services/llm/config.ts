@@ -1,16 +1,10 @@
 import { LLMProvider, ResolvedLLMSettings, StoredLLMSettings } from './types';
 
-export const DEFAULT_BASE_URLS: Record<LLMProvider, string> = {
-  openai: 'https://api.openai.com/v1',
-  anthropic: 'https://api.anthropic.com',
-  custom_fetch: 'http://localhost:11434',
-};
-
 export const DEFAULT_MODEL = '';
 export const STORAGE_KEYS = ['provider', 'baseUrl', 'apiUrl', 'apiKey', 'model', 'enableLocalOllama'] as const;
 
 export function resolveLLMSettings(settings: StoredLLMSettings): ResolvedLLMSettings {
-  const provider = inferProvider(settings, settings.apiUrl);
+  const provider = requireExplicitProvider(settings.provider);
   const baseUrl = resolveBaseUrl(settings, provider);
   const apiUrl = buildApiUrl(provider, baseUrl);
 
@@ -23,33 +17,18 @@ export function resolveLLMSettings(settings: StoredLLMSettings): ResolvedLLMSett
   };
 }
 
-export function inferProvider(settings: StoredLLMSettings, apiUrl?: string): LLMProvider {
-  if (settings.provider) {
-    if (settings.provider === 'compatible') return 'openai';
-    if (settings.provider === 'ollama') return 'custom_fetch';
-    return settings.provider;
+function requireExplicitProvider(provider: StoredLLMSettings['provider']): LLMProvider {
+  if (provider === 'openai' || provider === 'anthropic' || provider === 'custom_fetch') {
+    return provider;
   }
-
-  if (settings.enableLocalOllama) {
-    return 'custom_fetch';
-  }
-
-  const resolvedUrl = (apiUrl || resolveApiUrl(settings)).toLowerCase();
-  if (resolvedUrl.includes('localhost') || resolvedUrl.includes('127.0.0.1') || resolvedUrl.includes('0.0.0.0')) {
-    return 'custom_fetch';
-  }
-  if (resolvedUrl.includes('anthropic.com')) {
-    return 'anthropic';
-  }
-  return 'openai';
-}
-
-export function getDefaultBaseUrl(provider: LLMProvider): string {
-  return DEFAULT_BASE_URLS[provider];
+  throw new Error('未设置SDK类型，请在设置中显式选择后重试');
 }
 
 export function buildApiUrl(provider: LLMProvider, baseUrl: string): string {
   const normalizedBaseUrl = trimTrailingSlash(baseUrl);
+  if (!normalizedBaseUrl) {
+    return '';
+  }
 
   switch (provider) {
     case 'anthropic':
@@ -88,16 +67,16 @@ function detectCustomFetchEndpointKind(baseUrl: string): 'full' | 'openai' | 'ol
   return 'ollama';
 }
 
-function resolveApiUrl(settings: StoredLLMSettings): string {
-  if (settings.apiUrl) return settings.apiUrl;
-  const provider = inferProvider(settings);
-  return buildApiUrl(provider, resolveBaseUrl(settings, provider));
-}
-
 function resolveBaseUrl(settings: StoredLLMSettings, provider: LLMProvider): string {
-  if (settings.baseUrl) return trimTrailingSlash(settings.baseUrl);
+  if (settings.baseUrl) {
+    const normalizedBaseUrl = trimTrailingSlash(settings.baseUrl);
+    // Anthropic/OpenAI SDK 会自动追加 endpoint，若用户填了完整路径需回退到 base URL。
+    return provider === 'custom_fetch'
+      ? normalizedBaseUrl
+      : normalizeBaseUrl(normalizedBaseUrl, provider);
+  }
   if (settings.apiUrl) return normalizeBaseUrl(settings.apiUrl, provider);
-  return getDefaultBaseUrl(provider);
+  return '';
 }
 
 function normalizeBaseUrl(apiUrl: string, provider: LLMProvider): string {

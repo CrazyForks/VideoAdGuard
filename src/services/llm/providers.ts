@@ -15,6 +15,9 @@ export class LLMGateway {
     storedSettings: StoredLLMSettings
   ): Promise<LLMInvokeResult> {
     const settings = resolveLLMSettings(storedSettings);
+    if (!settings.baseUrl) {
+      throw new Error('未设置基础地址，请先在 Base URL 下拉中选择或手动填写');
+    }
 
     switch (settings.provider) {
       case 'anthropic':

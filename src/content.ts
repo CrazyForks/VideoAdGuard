@@ -4,7 +4,6 @@ import { WhitelistService } from './services/whitelist';
 import { AudioService } from './services/audio';
 import { CacheService } from './services/cache';
 import { normalizeErrorForUser } from './utils/errors';
-import './utils/logger';
 
 // 新增：广告片段接口，用于支持交互状态
 interface AdSegment {

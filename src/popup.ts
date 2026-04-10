@@ -1,7 +1,7 @@
 export {};
 import { WhitelistService } from './services/whitelist';
 import { BilibiliService } from './services/bilibili';
-import { buildApiUrl, getDefaultBaseUrl, resolveLLMSettings } from './services/llm/config';
+import { buildApiUrl, resolveLLMSettings } from './services/llm/config';
 import { LLMProvider, StoredLLMSettings } from './services/llm/types';
 import { normalizeErrorForUser } from './utils/errors';
 import { DEBUG_MODE_STORAGE_KEY } from './utils/logger';
@@ -50,8 +50,8 @@ const SDK_PRESETS: Record<LLMProvider, BaseUrlPreset[]> = {
   ],
   anthropic: [
     { name: '智谱 AI', baseUrl: 'https://open.bigmodel.cn/api/anthropic', actionLabel: '注册', actionUrl: 'https://www.bigmodel.cn/glm-coding?ic=NZ1MQISIX0' },
+    { name: 'MiniMax', baseUrl: 'https://api.minimaxi.com/anthropic', actionLabel: '注册', actionUrl: 'https://platform.minimaxi.com/subscribe/token-plan?code=FapfOonxo7&source=link' },
     { name: 'Anthropic', baseUrl: 'https://api.anthropic.com', actionLabel: '注册', actionUrl: 'https://console.anthropic.com/settings/keys' },
-    { name: 'MiniMax', baseUrl: 'https://api.minimax.com/anthropic', actionLabel: '注册', actionUrl: 'https://platform.minimaxi.com/subscribe/token-plan?code=FapfOonxo7&source=link' },
     { name: '腾讯云 Coding Plan', baseUrl: 'https://api.lkeap.cloud.tencent.com/plan/anthropic', actionLabel: '注册', actionUrl: 'https://curl.qcloud.com/xyTqcIlB' },
     { name: '阿里云 Coding Plan', baseUrl: 'https://coding.dashscope.aliyuncs.com/apps/anthropic', actionLabel: '注册', actionUrl: 'https://www.aliyun.com/minisite/goods?userCode=e9b0x8ku' },
     { name: '火山 Coding Plan', baseUrl: 'https://ark.cn-beijing.volces.com/api/coding', actionLabel: '注册', actionUrl: 'https://volcengine.com/L/8ziM51O_5WU/' },
@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let apiKeysByBaseUrl: Record<string, string> = {};
   let modelsByBaseUrl: Record<string, string> = {};
+  let baseUrlsByProvider: Partial<Record<LLMProvider, string>> = {};
   let activeBaseUrlKey: string | null = null;
   let debugModeEnabled = false;
   let debugClickCount = 0;
@@ -153,14 +154,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function persistCurrentBindings() {
+    persistCurrentProviderBaseUrl();
     persistCurrentApiKeyBinding();
     persistCurrentModelBinding();
+  }
+
+  function getCachedBaseUrl(provider: LLMProvider): string {
+    const value = baseUrlsByProvider[provider];
+    return typeof value === 'string' ? value : '';
+  }
+
+  function persistCurrentProviderBaseUrl(provider: LLMProvider = getSelectedProvider()) {
+    const baseUrl = baseUrlInput.value.trim();
+    if (baseUrl) {
+      baseUrlsByProvider[provider] = baseUrl;
+    }
   }
 
   function switchBaseUrlBinding(savePrevious: boolean = true) {
     if (savePrevious) persistCurrentBindings();
     activeBaseUrlKey = normalizeCompleteBaseUrl(baseUrlInput.value);
-    if (!activeBaseUrlKey) return;
+    if (!activeBaseUrlKey) {
+      apiKeyInput.value = '';
+      modelInput.value = '';
+      return;
+    }
     apiKeyInput.value = apiKeysByBaseUrl[activeBaseUrlKey] || '';
     modelInput.value = modelsByBaseUrl[activeBaseUrlKey] || '';
   }
@@ -184,8 +202,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateProviderState(provider: LLMProvider, preserveBaseUrl: boolean = false) {
     setSelectedProvider(provider);
-    if (!preserveBaseUrl || !baseUrlInput.value.trim()) {
-      baseUrlInput.value = getDefaultBaseUrl(provider);
+    if (!preserveBaseUrl) {
+      baseUrlInput.value = getCachedBaseUrl(provider);
     }
     apiKeyInput.placeholder = provider === 'custom_fetch' ? '可留空，本地服务如需鉴权可填写' : '请输入API密钥';
     renderBaseUrlPresets(provider);
@@ -203,8 +221,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function autoSaveSettings() {
     const provider = getSelectedProvider();
-    const baseUrl = baseUrlInput.value.trim() || getDefaultBaseUrl(provider);
-    const apiUrl = buildApiUrl(provider, baseUrl);
+    const baseUrl = baseUrlInput.value.trim();
+    const apiUrl = baseUrl ? buildApiUrl(provider, baseUrl) : '';
     const apiKey = apiKeyInput.value.trim();
     const model = modelInput.value.trim();
     const enableExtension = enableExtensionCheckbox.checked;
@@ -220,12 +238,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!model) console.warn('模型名称为空');
 
     try {
+      persistCurrentProviderBaseUrl(provider);
       persistCurrentBindings();
-      await chrome.storage.local.set({
+      const nextSettings: Record<string, unknown> = {
         provider,
         baseUrl,
-        apiUrl,
         apiKey,
+        baseUrlsByProvider,
         apiKeysByBaseUrl,
         model,
         modelsByBaseUrl,
@@ -236,7 +255,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         groqApiKey,
         enableAudioTranscription,
         enableGroqProxy,
-      });
+      };
+
+      if (provider === 'custom_fetch') {
+        nextSettings.apiUrl = apiUrl;
+      }
+
+      await chrome.storage.local.set(nextSettings);
+      if (provider !== 'custom_fetch') {
+        await chrome.storage.local.remove('apiUrl');
+      }
     } catch (error) {
       console.warn('保存设置失败:', error);
       showMessage(normalizeErrorForUser(error, 'settings'), 'error', 2500);
@@ -409,6 +437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     'provider',
     'baseUrl',
     'apiUrl',
+    'baseUrlsByProvider',
     'apiKey',
     'apiKeysByBaseUrl',
     'model',
@@ -423,10 +452,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     'enableGroqProxy',
   ]);
 
+  const storedBaseUrlsByProvider = settings.baseUrlsByProvider as Partial<Record<LLMProvider, unknown>> | undefined;
+  baseUrlsByProvider = {};
+  (['openai', 'anthropic', 'custom_fetch'] as const).forEach((provider) => {
+    const value = storedBaseUrlsByProvider?.[provider];
+    if (typeof value === 'string' && value.trim()) {
+      baseUrlsByProvider[provider] = value.trim();
+    }
+  });
+
   apiKeysByBaseUrl = settings.apiKeysByBaseUrl || {};
   modelsByBaseUrl = settings.modelsByBaseUrl || {};
+  const persistedProvider = settings.provider as StoredLLMSettings['provider'];
+  const initialProvider: LLMProvider =
+    persistedProvider === 'openai' || persistedProvider === 'anthropic' || persistedProvider === 'custom_fetch'
+      ? persistedProvider
+      : 'openai';
   const resolvedLLMSettings = resolveLLMSettings({
-    provider: settings.provider as StoredLLMSettings['provider'],
+    provider: initialProvider,
     baseUrl: settings.baseUrl,
     apiUrl: settings.apiUrl,
     apiKey: settings.apiKey,
@@ -435,8 +478,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   } as StoredLLMSettings);
 
   updateProviderState(resolvedLLMSettings.provider, true);
-  baseUrlInput.value = resolvedLLMSettings.baseUrl;
-  activeBaseUrlKey = normalizeCompleteBaseUrl(resolvedLLMSettings.baseUrl);
+  const persistedBaseUrl = typeof settings.baseUrl === 'string' ? settings.baseUrl.trim() : '';
+  const cachedBaseUrl = getCachedBaseUrl(initialProvider);
+  const initialBaseUrl = persistedBaseUrl || cachedBaseUrl || resolvedLLMSettings.baseUrl;
+  if (initialBaseUrl) {
+    baseUrlsByProvider[initialProvider] = initialBaseUrl;
+  }
+  baseUrlInput.value = initialBaseUrl;
+  activeBaseUrlKey = normalizeCompleteBaseUrl(initialBaseUrl);
   if (activeBaseUrlKey && settings.apiKey && !apiKeysByBaseUrl[activeBaseUrlKey]) {
     apiKeysByBaseUrl[activeBaseUrlKey] = settings.apiKey;
   }
