@@ -1,4 +1,4 @@
-export {};
+export { };
 import { WhitelistService } from './services/whitelist';
 import { BilibiliService } from './services/bilibili';
 import { buildApiUrl, resolveLLMSettings } from './services/llm/config';

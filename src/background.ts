@@ -3,6 +3,7 @@
  * 负责处理跨域请求和语音识别API调用
  */
 
+import './utils/logger';
 import { STORAGE_KEYS } from './services/llm/config';
 import { LLMGateway } from './services/llm/providers';
 import { LLMInvokePayload, StoredLLMSettings } from './services/llm/types';

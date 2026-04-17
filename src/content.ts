@@ -1,3 +1,4 @@
+import './utils/logger';
 import { BilibiliService } from './services/bilibili';
 import { AIService } from './services/ai';
 import { WhitelistService } from './services/whitelist';
@@ -123,10 +124,10 @@ class AdDetector {
       const bvid = urlObj.searchParams.get('bvid');
       if (bvid) return bvid;
     } catch (error) {
-      throw new Error('URL解析失败');
+      throw new Error(normalizeErrorForUser('接口地址无效', 'detection'));
     }
 
-    throw new Error('未找到视频ID');
+    throw new Error(normalizeErrorForUser('未找到视频ID', 'detection'));
   }
 
   private static resetState() {
@@ -444,7 +445,7 @@ class AdDetector {
 
         // 验证返回数据格式
         if (typeof result.exist !== 'boolean' || !Array.isArray(result.index_lists)) {
-          throw new Error('返回数据格式错误: '+ {cleanJson});
+          throw new Error(normalizeErrorForUser('返回数据格式错误', 'detection'));
         }
 
         // 验证 index_lists 格式
@@ -452,13 +453,13 @@ class AdDetector {
           Array.isArray(item) && item.length === 2 &&
           typeof item[0] === 'number' && typeof item[1] === 'number'
         )) {
-          throw new Error('广告时间段格式错误');
+          throw new Error(normalizeErrorForUser('广告时间段格式错误', 'detection'));
         }
 
         console.log('【VideoAdGuard】AI分析完成，检测结果:', result);
       } catch (e) {
         console.warn('【VideoAdGuard】大模型返回数据JSON解析失败:', e);
-        throw new Error(`AI返回数据格式错误: ${(e as Error).message}`);
+        throw new Error(normalizeErrorForUser(e, 'detection'));
       }
 
       if (result.exist) {
@@ -506,7 +507,7 @@ class AdDetector {
         const videoElement = document.querySelector("video");
         if (!videoElement) {
           console.warn('未找到视频元素');
-          throw new Error('未找到视频元素');
+          throw new Error(normalizeErrorForUser('操作失败', 'detection'));
         }
         const videoDuration = videoElement ? videoElement.duration : 0; // 获取视频总时长
 
