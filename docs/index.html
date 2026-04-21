@@ -326,6 +326,88 @@
             margin-bottom: 1.5rem;
         }
 
+        /* Testimonials Section */
+        .testimonials {
+            padding: 80px 0;
+            background: var(--light-pink);
+            overflow: hidden;
+        }
+
+        .testimonials-track {
+            display: flex;
+            gap: 2rem;
+            animation: scroll 30s linear infinite;
+        }
+
+        .testimonials-track:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes scroll {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        .testimonial-card {
+            flex: 0 0 350px;
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .testimonial-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .testimonial-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .testimonial-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--gradient-pink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--white);
+        }
+
+        .testimonial-info h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .testimonial-info p {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .testimonial-rating {
+            color: #ffc107;
+            margin-bottom: 1rem;
+        }
+
+        .testimonial-content {
+            color: var(--text-light);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
         /* Footer */
         footer {
             background: var(--text-dark);
@@ -374,6 +456,10 @@
             .footer-content {
                 flex-direction: column;
                 text-align: center;
+            }
+
+            .testimonial-card {
+                flex: 0 0 280px;
             }
         }
 
@@ -487,6 +573,189 @@
         </div>
     </section>
 
+    <!-- Testimonials Section -->
+    <section class="testimonials">
+        <div class="container">
+            <div class="section-title fade-in-up">
+                <h2>用户评价</h2>
+                <p>听听用户们怎么说</p>
+            </div>
+        </div>
+        <div class="testimonials-track">
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">Y</div>
+                    <div class="testimonial-info">
+                        <h4>Yingying</h4>
+                        <p>Chrome Web Store</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"太棒啦🎉"</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">m</div>
+                    <div class="testimonial-info">
+                        <h4>miao L</h4>
+                        <p>Chrome Web Store</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"好用，点个赞"</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">d</div>
+                    <div class="testimonial-info">
+                        <h4>dinglv</h4>
+                        <p>Microsoft Edge Add-ons</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"神中神"</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">d</div>
+                    <div class="testimonial-info">
+                        <h4>dost</h4>
+                        <p>Firefox Add-ons</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"本年度用过最好用的插件, 自动跳过的感觉非常奇妙"</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">L</div>
+                    <div class="testimonial-info">
+                        <h4>Lexington Knight</h4>
+                        <p>Greasy Fork</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"真的好用，帮我节省了大量时间，简直是延长了我的寿命"</p>
+            </div>
+            <!-- Duplicate cards for seamless loop -->
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">Y</div>
+                    <div class="testimonial-info">
+                        <h4>Yingying</h4>
+                        <p>Chrome Web Store</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"太棒啦🎉"</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">m</div>
+                    <div class="testimonial-info">
+                        <h4>miao L</h4>
+                        <p>Chrome Web Store</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"好用，点个赞"</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">d</div>
+                    <div class="testimonial-info">
+                        <h4>dinglv</h4>
+                        <p>Microsoft Edge Add-ons</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"神中神"</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">d</div>
+                    <div class="testimonial-info">
+                        <h4>dost</h4>
+                        <p>Firefox Add-ons</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"本年度用过最好用的插件, 自动跳过的感觉非常奇妙"</p>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">L</div>
+                    <div class="testimonial-info">
+                        <h4>Lexington Knight</h4>
+                        <p>Greasy Fork</p>
+                    </div>
+                </div>
+                <div class="testimonial-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-content">"真的好用，帮我节省了大量时间，简直是延长了我的寿命"</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Stats Section -->
     <section class="stats">
         <div class="container">
@@ -496,7 +765,7 @@
             </div>
             <div class="stats-grid">
                 <div class="stat-item fade-in-up">
-                    <h3>1.3.0</h3>
+                    <h3>1.3.1</h3>
                     <p>最新版本</p>
                 </div>
                 <div class="stat-item fade-in-up">
@@ -508,7 +777,7 @@
                     <p>支持AI模型</p>
                 </div>
                 <div class="stat-item fade-in-up">
-                    <h3>1000+</h3>
+                    <h3>2000+</h3>
                     <p>用户人数</p>
                 </div>
             </div>
@@ -563,7 +832,7 @@
         <div class="container">
             <div class="footer-content">
                 <div>
-                    <p>&copy; 2025 VideoAdGuard</p>
+                    <p>&copy; 2025-2026 VideoAdGuard</p>
                     <p style="margin-top: 0.5rem;"><a href="privacy/"
                             style="color: var(--primary-pink); text-decoration: none;">隐私政策</a></p>
                 </div>
