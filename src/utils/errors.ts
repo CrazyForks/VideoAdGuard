@@ -63,7 +63,7 @@ const USER_FACING_ERROR_PREFIXES = [
   '白名单操作失败',
   '模型接口调用失败',
   '模型分析未完成',
-  '操作失败，请稍后重试',
+  '操作失败',
 ];
 
 function getErrorText(error: unknown): string {
