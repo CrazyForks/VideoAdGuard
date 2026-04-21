@@ -33,26 +33,23 @@ export class AIService {
       temperature: 0,
     };
 
-    try {
-      const response = (await chrome.runtime.sendMessage({
-        type: 'LLM_INVOKE',
-        payload,
-      })) as LLMInvokeResponse;
+    const response = (await chrome.runtime.sendMessage({
+      type: 'LLM_INVOKE',
+      payload,
+    }).catch(e => {
+      throw new Error(normalizeErrorForUser(e, 'llm'));
+    })) as LLMInvokeResponse;
 
-      if (!response?.success) {
-        throw new Error(response?.error || '模型请求失败，请检查配置后重试');
-      }
-
-      const text = response?.data?.text;
-      if (typeof text !== 'string' || !text.trim()) {
-        throw new Error('模型未返回有效内容，请更换模型或稍后重试');
-      }
-
-      return text.trim();
-    } catch (error) {
-      console.log('【VideoAdGuard】模型调用失败:', error);
-      throw new Error(normalizeErrorForUser(error, 'llm'));
+    if (!response?.success) {
+      throw new Error(normalizeErrorForUser(response?.error, 'llm'));
     }
+
+    const text = response?.data?.text;
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error(normalizeErrorForUser('未返回文本内容', 'llm'));
+    }
+
+    return text.trim();
   }
 
   public static async detectAd(videoInfo: VideoInfo): Promise<string> {

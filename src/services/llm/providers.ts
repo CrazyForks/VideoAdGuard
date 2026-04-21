@@ -9,6 +9,37 @@ import {
   StoredLLMSettings,
 } from './types';
 
+type OpenAICompatibleRequest = {
+  model: string;
+  messages: Array<{ role: 'system' | 'user'; content: string }>;
+  max_tokens: number;
+  temperature?: number;
+};
+
+export function buildOpenAICompatibleRequest(
+  payload: LLMInvokePayload,
+  model: string
+): OpenAICompatibleRequest {
+  const request: OpenAICompatibleRequest = {
+    model,
+    messages: [
+      { role: 'system', content: payload.systemPrompt },
+      { role: 'user', content: payload.userPrompt },
+    ],
+    max_tokens: payload.maxTokens,
+  };
+
+  if (!usesLockedKimiTemperature(model)) {
+    request.temperature = payload.temperature;
+  }
+
+  return request;
+}
+
+function usesLockedKimiTemperature(model: string): boolean {
+  return model.trim().toLowerCase().includes('kimi');
+}
+
 export class LLMGateway {
   public static async invoke(
     payload: LLMInvokePayload,
@@ -45,15 +76,7 @@ export class LLMGateway {
       timeout: 30_000,
     });
 
-    const request: any = {
-      model: settings.model,
-      messages: [
-        { role: 'system', content: payload.systemPrompt },
-        { role: 'user', content: payload.userPrompt },
-      ],
-      temperature: payload.temperature,
-      max_tokens: payload.maxTokens,
-    };
+    const request = buildOpenAICompatibleRequest(payload, settings.model);
 
     const completion = await client.chat.completions.create(request);
     const text = completion.choices[0]?.message?.content;
@@ -140,15 +163,7 @@ export class LLMGateway {
       headers,
       body: JSON.stringify(
         isOpenAICompatible
-          ? {
-              model: settings.model,
-              messages: [
-                { role: 'system', content: payload.systemPrompt },
-                { role: 'user', content: payload.userPrompt },
-              ],
-              temperature: payload.temperature,
-              max_tokens: payload.maxTokens,
-            }
+          ? buildOpenAICompatibleRequest(payload, settings.model)
           : {
               model: settings.model,
               messages: [
