@@ -34,6 +34,7 @@ const USER_FACING_ERRORS = [
   '白名单操作失败，请稍后重试',
   '模型接口调用失败，请检查 Base URL、API 密钥和模型名称',
   '模型分析未完成，请检查模型配置、网络或模型名称',
+  '未找到视频ID，请检查视频链接是否正确',
   '操作失败，请稍后重试',
 ];
 
@@ -62,7 +63,7 @@ const USER_FACING_ERROR_PREFIXES = [
   '白名单操作失败',
   '模型接口调用失败',
   '模型分析未完成',
-  '操作失败',
+  '操作失败，请稍后重试',
 ];
 
 function getErrorText(error: unknown): string {
@@ -256,6 +257,10 @@ export function normalizeErrorForUser(error: unknown, context: UserErrorContext 
 
   if (includesAny(text, ['请求被拦截', '风控', 'csrf', 'permission denied'])) {
     return '请求被服务端拒绝，请稍后重试或检查账号权限';
+  }
+
+  if (includesAny(text, ['未找到视频id', '视频id'])) {
+    return '未找到视频ID，请检查视频链接是否正确';
   }
 
   return getDefaultUserError(context);

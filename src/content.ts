@@ -459,7 +459,7 @@ class AdDetector {
         console.log('【VideoAdGuard】AI分析完成，检测结果:', result);
       } catch (e) {
         console.warn('【VideoAdGuard】大模型返回数据JSON解析失败:', e);
-        throw new Error(normalizeErrorForUser(e, 'detection'));
+        throw new Error(normalizeErrorForUser('AI返回数据格式错误', 'detection'));
       }
 
       if (result.exist) {
