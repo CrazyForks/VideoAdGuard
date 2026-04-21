@@ -104,7 +104,3 @@ jobs:
           else
             echo "Skipping review request for Warma10032 since they are the PR author."
           fi
-          gh api repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/requested_reviewers \
-            --method POST \
-            --field reviewers[]='Warma10032' \
-            --jq '.'

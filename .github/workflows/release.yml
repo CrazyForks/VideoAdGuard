@@ -40,14 +40,19 @@ jobs:
           CURRENT_VERSION=$(node -p "require('./package.json').version")
 
           if [[ "$INPUT_VERSION" == "patch" || "$INPUT_VERSION" == "minor" || "$INPUT_VERSION" == "major" ]]; then
-            NEW_VERSION=$(npm --no-git-tag-version version $INPUT_VERSION 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | tail -1)
+            IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+            case "$INPUT_VERSION" in
+              patch) new_version="${major}.${minor}.$((patch + 1))" ;;
+              minor) new_version="${major}.$((minor + 1)).0" ;;
+              major) new_version="$((major + 1)).0.0" ;;
+            esac
           else
-            NEW_VERSION=$INPUT_VERSION
+            new_version="$INPUT_VERSION"
           fi
 
           echo "Current version: $CURRENT_VERSION"
-          echo "New version: $NEW_VERSION"
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
 
       - name: Update version in package.json
         run: |
@@ -81,6 +86,14 @@ jobs:
         run: |
           npm run build
 
+      - name: Commit version change
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+          git push
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -94,11 +107,3 @@ jobs:
             builds/VideoAdGuard-firefox-v*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Commit version change
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add package.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
-          git push
