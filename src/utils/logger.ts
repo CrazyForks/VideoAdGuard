@@ -7,8 +7,6 @@ let consolePatched = false;
 const nativeDebug = console.debug.bind(console);
 const nativeLog = console.log.bind(console);
 const nativeInfo = console.info.bind(console);
-const nativeWarn = console.warn.bind(console);
-const nativeError = console.error.bind(console);
 
 function canUseChromeStorage(): boolean {
   return typeof chrome !== 'undefined' && Boolean(chrome.storage?.local);
@@ -39,17 +37,7 @@ function patchConsoleOutput(): void {
     }
   };
 
-  console.warn = (...args: unknown[]) => {
-    if (debugEnabled) {
-      nativeWarn(...args);
-    }
-  };
-
-  console.error = (...args: unknown[]) => {
-    if (debugEnabled) {
-      nativeError(...args);
-    }
-  };
+  // warn 和 error 始终输出，不受 debugMode 控制
 }
 
 export async function initDebugLogging(): Promise<void> {

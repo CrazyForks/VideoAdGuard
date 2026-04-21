@@ -1,0 +1,100 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+  push:
+    branches: [ main, dev ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+
+# 确保只有一个 PR 构建运行
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 构建检查
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload Chrome build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-chrome
+          path: builds/VideoAdGuard-chrome-v*.zip
+          retention-days: 1
+
+      - name: Upload Firefox build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-firefox
+          path: builds/VideoAdGuard-firefox-v*.zip
+          retention-days: 1
+
+  # 代码质量检查
+  lint:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+  # PR 审查请求
+  request-review:
+    name: Request Review
+    needs: [build, lint]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request reviewers
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          # 解析仓库信息
+          REPO_FULL=${{ github.repository }}
+          OWNER=${REPO_FULL%%/*}
+          REPO_NAME=${REPO_FULL#*/}
+
+          # 仅当 PR 作者不是 Warma10032 时，请求其作为 reviewer
+          if [ "$PR_AUTHOR" != "Warma10032" ]; then
+            gh api repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/requested_reviewers \
+              --method POST \
+              --field reviewers[]='Warma10032' \
+              --jq '.'
+          else
+            echo "Skipping review request for Warma10032 since they are the PR author."
+          fi
