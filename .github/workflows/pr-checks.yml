@@ -82,6 +82,7 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           # 解析仓库信息
           REPO_FULL=${{ github.repository }}
@@ -94,7 +95,15 @@ jobs:
             --field reviewers[]='Copilot' \
             --jq '.'
 
-          # 请求你作为 reviewer
+          # 仅当 PR 作者不是 Warma10032 时，请求其作为 reviewer
+          if [ "$PR_AUTHOR" != "Warma10032" ]; then
+            gh api repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/requested_reviewers \
+              --method POST \
+              --field reviewers[]='Warma10032' \
+              --jq '.'
+          else
+            echo "Skipping review request for Warma10032 since they are the PR author."
+          fi
           gh api repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/requested_reviewers \
             --method POST \
             --field reviewers[]='Warma10032' \
