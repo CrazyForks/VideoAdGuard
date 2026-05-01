@@ -1,0 +1,12 @@
+name = "video-ad-guard"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[[kv_namespaces]]
+binding = "VIDEO_AD_GUARD_KV"
+id = "d9e25787b49047bd99a0d7287324bcfd"

@@ -5,12 +5,24 @@ export interface CacheItem {
   /** 广告是否存在 */
   exist: boolean;
   /** 商品名称列表 */
-  good_name: string[];
+  goodName: string[];
   /** 广告时间段 */
   adTimeRanges: number[][];
   /** 检测结果是否可信（用于决定是否自动跳过） */
   isDetectionConfident: boolean;
-  /** 创建时间戳 */
+  /** 缓存来源 */
+  source?: 'local' | 'remote';
+  /** 检测时间戳 */
+  detectedAt: number;
+  /** 模型名称 */
+  model?: string;
+  /** 提供商名称 */
+  provider?: string;
+  /** accurate: 可用于查询; inaccurate: 用户标记不准确 */
+  accuracy?: 'accurate' | 'inaccurate';
+  /** ai: AI 检测结果; user: 用户手动修正 */
+  recordSource?: 'ai' | 'user';
+  /** 创建时间戳（本地缓存用） */
   createdAt: number;
 }
 
@@ -64,6 +76,7 @@ export class CacheService {
    * @returns 是否过期
    */
   private static isExpired(item: CacheItem): boolean {
+    // 注意：inaccurate 不再视为过期，而是 getDetectionResult 读取时跳过
     const now = Date.now();
     return (now - item.createdAt) > CacheService.CACHE_EXPIRY_MS;
   }
@@ -181,6 +194,12 @@ export class CacheService {
         return null;
       }
 
+      // 跳过标记为不准确的缓存（视为无缓存，下次会重新检测）
+      if (item.accuracy === 'inaccurate') {
+        console.log(`【VideoAdGuard】[Cache] ${bvid} 的缓存标记为不准确，视为无缓存`);
+        return null;
+      }
+
       console.log(`【VideoAdGuard】[Cache] 找到 ${bvid} 的有效缓存`);
 
       // 向后兼容：如果缓存项没有isDetectionConfident字段，设置默认值
@@ -202,30 +221,44 @@ export class CacheService {
    * @param good_name 商品名称列表
    * @param adTimeRanges 广告时间段
    * @param isDetectionConfident 检测结果是否可信
+   * @param source 缓存来源
+   * @param remoteDetectedAt 云端缓存的检测时间
+   * @param model 模型名称
+   * @param provider 提供商名称
    */
   public static async saveDetectionResult(
     bvid: string,
     exist: boolean,
     good_name: string[],
     adTimeRanges: number[][],
-    isDetectionConfident: boolean = false
+    isDetectionConfident: boolean = false,
+    source: 'local' | 'remote' = 'local',
+    remoteDetectedAt?: number,
+    model?: string,
+    provider?: string
   ): Promise<void> {
     try {
       const cache = await CacheService.getAllCache();
       const cacheKey = CacheService.generateCacheKey(bvid);
-      
+
       const cacheItem: CacheItem = {
         exist,
-        good_name,
+        goodName: good_name,
         adTimeRanges,
         isDetectionConfident,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        source,
+        detectedAt: remoteDetectedAt || Date.now(),
+        model: model || 'unknown',
+        provider: provider || 'unknown',
+        accuracy: 'accurate',
+        recordSource: 'ai',
       };
 
       cache[cacheKey] = cacheItem;
       await CacheService.saveAllCache(cache);
-      
-      console.log(`【VideoAdGuard】[Cache] 已保存 ${bvid} 的检测结果到缓存`);
+
+      console.log(`【VideoAdGuard】[Cache] 已保存 ${bvid} 的检测结果到缓存（来源: ${source}）`);
     } catch (error) {
       console.warn('【VideoAdGuard】[Cache] 保存缓存失败:', error);
     }
@@ -235,8 +268,9 @@ export class CacheService {
    * 更新缓存中的广告时间段（用于手动调整后的同步）
    * @param bvid 视频BV号
    * @param adTimeRanges 最新的广告时间段
+   * @param recordSource 可选：标记来源为 'user'（用户手动修正）
    */
-  public static async updateAdTimeRanges(bvid: string, adTimeRanges: number[][]): Promise<void> {
+  public static async updateAdTimeRanges(bvid: string, adTimeRanges: number[][], recordSource?: 'user'): Promise<void> {
     try {
       const cache = await CacheService.getAllCache();
       const cacheKey = CacheService.generateCacheKey(bvid);
@@ -250,6 +284,11 @@ export class CacheService {
       item.adTimeRanges = adTimeRanges;
       item.exist = adTimeRanges.length > 0 ? true : false;
       item.createdAt = Date.now();
+      // 用户手动修正广告区间时，标记来源为 user，同时将 accuracy 改为 accurate
+      if (recordSource === 'user') {
+        item.recordSource = 'user';
+        item.accuracy = 'accurate';
+      }
 
       await CacheService.saveAllCache(cache);
       console.log(`【VideoAdGuard】[Cache] 已同步 ${bvid} 的手动调整广告区间到缓存`);
@@ -335,6 +374,27 @@ export class CacheService {
         lastCleanupTime: 0,
         nextCleanupTime: 0
       };
+    }
+  }
+
+  /**
+   * 标记缓存为不准确，下次进入时会重新检测
+   * @param bvid 视频BV号
+   */
+  public static async markAsInaccurate(bvid: string): Promise<void> {
+    try {
+      const cache = await CacheService.getAllCache();
+      const cacheKey = CacheService.generateCacheKey(bvid);
+      const item = cache[cacheKey];
+
+      if (item) {
+        item.accuracy = 'inaccurate';
+        item.createdAt = Date.now();
+        await CacheService.saveAllCache(cache);
+        console.log(`【VideoAdGuard】[Cache] 已标记 ${bvid} 的缓存为不准确`);
+      }
+    } catch (error) {
+      console.warn('【VideoAdGuard】[Cache] 标记缓存失败:', error);
     }
   }
 }
