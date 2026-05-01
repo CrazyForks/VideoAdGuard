@@ -128,15 +128,11 @@ export class CloudCacheService {
    * 保存检测结果到云端
    *
    * @param bvid 视频 BV 号
-   * @param record 检测结果记录
-   * @param accuracy 可选：覆盖 accuracy 字段
-   *   - 'inaccurate': 标记为不准确，查询时跳过
-   *   - undefined: 使用 record 本身的 accuracy（默认 'accurate'）
+   * @param record 检测结果记录（accuracy 字段由调用方决定）
    */
   static async saveRemoteCache(
     bvid: string,
-    record: Omit<RemoteAdRecord, 'bvid'>,
-    accuracy?: 'inaccurate'
+    record: Omit<RemoteAdRecord, 'bvid'>
   ): Promise<boolean> {
     const workerUrl = await this.getWorkerUrl();
     if (!workerUrl) {
@@ -150,12 +146,6 @@ export class CloudCacheService {
       bvid,
       clientVersion: CLIENT_VERSION,
     };
-
-    // 处理 accuracy 字段
-    if (accuracy === 'inaccurate') {
-      body.accuracy = 'inaccurate';
-      console.log(`【VideoAdGuard】[CloudCache] 标记为不准确: ${bvid}`);
-    }
 
     console.log(`【VideoAdGuard】[CloudCache] 保存到云端: ${bvid}, 来源: ${body.source}, accuracy: ${body.accuracy}`);
 

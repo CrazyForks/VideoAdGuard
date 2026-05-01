@@ -13,8 +13,6 @@ npm run clean        # 清理构建产物
 
 # 测试命令
 npm test             # 运行所有测试（Vitest）
-npm run test:watch   # 监听模式（文件变化时重新运行）
-npm run test:coverage # 生成覆盖率报告
 ```
 
 **Worker 部署命令：**
@@ -60,7 +58,7 @@ Webpack 通过别名替换 `./services/audio`：
 ### 云端缓存架构
 
 **数据模型：**
-- Key: `ad:{bvid}`（每个视频一个主记录）
+- Key: `{bvid}`（每个视频一个主记录，直接使用 BV 号）
 - `accuracy: 'accurate'` — 正常记录，查询时返回
 - `accuracy: 'inaccurate'` — 用户标记不准确，查询时跳过
 - `source: 'ai' | 'user'` — 来源（AI检测或用户手动修正）
@@ -82,7 +80,7 @@ Webpack 通过别名替换 `./services/audio`：
 
 **安全措施：**
 - BVID 格式校验：`^BV1[0-9A-Za-z]{8,}$`
-- Rate Limiting（GET 20次/秒，POST 10次/分）
+- Rate Limiting（GET 2次/秒，POST 10次/分）
 - 云端服务异常时静默降级，不影响本地检测
 
 **Worker 部署：** `https://videoadguard-api.xiaobaozi.cn`

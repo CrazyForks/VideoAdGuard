@@ -1,7 +1,6 @@
 export { };
 import { WhitelistService } from './services/whitelist';
 import { BilibiliService } from './services/bilibili';
-import { CloudCacheService } from './services/cloud-cache';
 import { buildApiUrl, resolveLLMSettings } from './services/llm/config';
 import { LLMProvider, StoredLLMSettings } from './services/llm/types';
 import { normalizeErrorForUser } from './utils/errors';
@@ -452,8 +451,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     'groqApiKey',
     'enableAudioTranscription',
     'enableGroqProxy',
-    'enableCloudCache',
-    'cloudCacheWorkerUrl',
   ]);
 
   const storedBaseUrlsByProvider = settings.baseUrlsByProvider as Partial<Record<LLMProvider, unknown>> | undefined;

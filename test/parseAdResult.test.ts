@@ -127,7 +127,8 @@ describe('parseAdResult', () => {
     });
 
     it('handles curly quotes in good_name values', () => {
-      const input = '{"exist": true, "good_name": ["广告"], "index_lists": [[0, 10]]}';
+      // Use actual curly quote characters (U+201C U+201D) to test replacement
+      const input = '{"exist": true, "good_name": [“广告”], "index_lists": [[0, 10]]}';
       const result = parseAdResult(input);
       expect(result.good_name).toEqual(['广告']);
     });
