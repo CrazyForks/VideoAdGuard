@@ -4,7 +4,7 @@ import { LLMInvokePayload, LLMInvokeResult, LLMResponseFormat } from './llm/type
 interface VideoInfo {
   title: string;
   topComment: string | null;
-  addtionMessages: Record<string, Record<string, any>> | null;
+  additionalMessages: Record<string, Record<string, unknown>> | null;
   captions: Record<number, string>;
 }
 
@@ -24,7 +24,7 @@ export class AIService {
     userPrompt: string,
     responseFormat: LLMResponseFormat,
     maxTokens: number = 8192
-  ): Promise<string> {
+  ): Promise<{ text: string; provider: string; model: string }> {
     const payload: LLMInvokePayload = {
       systemPrompt,
       userPrompt,
@@ -49,10 +49,14 @@ export class AIService {
       throw new Error(normalizeErrorForUser('未返回文本内容', 'llm'));
     }
 
-    return text.trim();
+    return {
+      text: text.trim(),
+      provider: response?.data?.provider || 'unknown',
+      model: response?.data?.model || 'unknown',
+    };
   }
 
-  public static async detectAd(videoInfo: VideoInfo): Promise<string> {
+  public static async detectAd(videoInfo: VideoInfo): Promise<{ text: string; provider: string; model: string }> {
     return this.invokeModel(
       '你是一个专业的视频内容分析师，专门识别视频中的植入广告。只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告。',
       this.buildPrompt(videoInfo),
@@ -60,7 +64,7 @@ export class AIService {
     );
   }
 
-  public static async detectAdRestricted(videoInfo: RestrictedVideoInfo): Promise<string> {
+  public static async detectAdRestricted(videoInfo: RestrictedVideoInfo): Promise<{ text: string; provider: string; model: string }> {
     return this.invokeModel(
       '你是一个专业的视频内容分析师，专门识别视频中的植入广告。在限制模式下，你需要更加谨慎和精确地判断广告内容。只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告。',
       this.buildRestrictedPrompt(videoInfo),
@@ -74,7 +78,7 @@ export class AIService {
 视频信息：
 标题：${videoInfo.title}
 置顶评论：${videoInfo.topComment || '无'}
-附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
+附加信息：${JSON.stringify(videoInfo.additionalMessages) || '无'}
 
 检测规则：
 1. 只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告
@@ -104,7 +108,7 @@ export class AIService {
 视频信息：
 标题：${videoInfo.title}
 置顶评论：${videoInfo.topComment || '无'}
-附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
+附加信息：${JSON.stringify(videoInfo.additionalMessages) || '无'}
 
 限制模式检测规则：
 1. 只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告
@@ -131,8 +135,8 @@ export class AIService {
     const systemPrompt =
       '你是商品名称提取专家。从链接标题中提取核心商品名称，去除修饰词、营销词汇，只保留商品的本质名称。';
     const userPrompt = `链接标题：${linkTitle}\n\n请提取其中的核心商品名称，只返回纯文本的商品名称，不要解释。`;
-    const text = await this.invokeModel(systemPrompt, userPrompt, 'text', 120);
-    return text
+    const result = await this.invokeModel(systemPrompt, userPrompt, 'text', 120);
+    return result.text
       .replace(/^```[\w-]*\s*/i, '')
       .replace(/```$/i, '')
       .trim()

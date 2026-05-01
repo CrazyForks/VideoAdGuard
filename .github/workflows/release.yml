@@ -76,6 +76,13 @@ jobs:
           fi
 
           cat > /tmp/release_notes.md << 'EOF'
+          ## 安装步骤
+
+          1. 下载对应版本的 VideoAdGuard.zip
+          2. 解压压缩包
+          3. 在浏览器扩展页面打开`开发者模式`
+          4. 点击"加载解压缩的扩展"，选择你解压后的文件夹
+
           ## What's Changed
 
           EOF

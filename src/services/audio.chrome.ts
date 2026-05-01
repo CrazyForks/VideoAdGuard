@@ -1,6 +1,39 @@
 /**
  * Chrome 专用音频处理（Blob -> data:URL -> background）
  */
+
+// 音频流信息
+interface AudioStreamInfo {
+  bandwidth: number;
+  baseUrl: string;
+}
+
+// 播放URL数据
+interface PlayUrlData {
+  dash?: {
+    audio?: AudioStreamInfo[];
+  };
+}
+
+// Whisper 字幕分段
+interface WhisperSegment {
+  text: string;
+  start: number;
+  end: number;
+}
+
+// Whisper 识别结果
+interface WhisperTranscription {
+  text: string;
+  segments?: WhisperSegment[];
+}
+
+// 文件信息
+interface AudioFileInfo {
+  name?: string;
+  type?: string;
+}
+
 export class AudioService {
   // 支持的音频/容器类型
   private static readonly SUPPORTED_MIME = [
@@ -15,6 +48,8 @@ export class AudioService {
     'video/mp4'
   ];
 
+  private static readonly DEFAULT_MODEL = 'whisper-large-v3-turbo';
+
   private static normalizeAudioBlob(audioBlob: Blob): Blob {
     const type = audioBlob.type || 'application/octet-stream';
     if (AudioService.SUPPORTED_MIME.includes(type)) return audioBlob;
@@ -24,7 +59,7 @@ export class AudioService {
     throw new Error('未知格式: ' + type);
   }
 
-  public static getLowestBandwidthAudioUrl(playUrlData: any): string | null {
+  public static getLowestBandwidthAudioUrl(playUrlData: PlayUrlData): string | null {
     try {
       if (!playUrlData?.dash?.audio || !Array.isArray(playUrlData.dash.audio)) return null;
       const audioStreams = playUrlData.dash.audio;
@@ -44,7 +79,7 @@ export class AudioService {
     return AudioService.normalizeAudioBlob(raw);
   }
 
-  public static async transcribeAudioBlob(audioBlob: Blob, fileInfo: { name?: string; type?: string }): Promise<any> {
+  public static async transcribeAudioBlob(audioBlob: Blob, fileInfo: AudioFileInfo): Promise<WhisperTranscription> {
     const audioBlobUrl = URL.createObjectURL(audioBlob);
 
     const { groqApiKey: apiKey, enableGroqProxy } = await chrome.storage.local.get(['groqApiKey', 'enableGroqProxy']);
@@ -61,7 +96,7 @@ export class AudioService {
         },
         apiKey,
         options: {
-          model: 'whisper-large-v3-turbo',
+          model: AudioService.DEFAULT_MODEL,
           responseFormat: 'verbose_json',
           allowProxyFallback: Boolean(enableGroqProxy)
         }
@@ -69,11 +104,11 @@ export class AudioService {
     });
 
     if (!response?.success) throw new Error(response?.error || '未知错误');
-    return response.data;
+    return response.data as WhisperTranscription;
   }
 
 
-  public static async processAndTranscribeAudio(playUrlData: any, _opts: { model?: string; language?: string; responseFormat?: 'verbose_json' } = {}): Promise<{ transcription: any } | null> {
+  public static async processAndTranscribeAudio(playUrlData: PlayUrlData, _opts: { model?: string; language?: string; responseFormat?: 'verbose_json' } = {}): Promise<{ transcription: WhisperTranscription } | null> {
     try {
       const audioUrl = this.getLowestBandwidthAudioUrl(playUrlData);
       if (!audioUrl) return null;

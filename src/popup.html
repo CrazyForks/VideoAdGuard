@@ -16,7 +16,7 @@
       <input type="checkbox" id="autoSkipAd" checked>
     </div>
     <div class="form-group restrictedMode-field">
-      <label for="restrictedMode">限制模式</label>
+      <label for="restrictedMode">限制模式 <span class="info-icon" id="restrictedModeInfo" title="开启后，仅在视频简介/评论中检测到商品链接时才进行广告检测"><span class="info-icon-inner">i</span></span></label>
       <input type="checkbox" id="restrictedMode">
     </div>
   </div>
@@ -176,10 +176,11 @@
       margin-right: 10px;
       font-weight: normal;
       order: 1;
+      white-space: nowrap;
     }
 
     input[type="checkbox"] {
-      order: 2;
+      order: 3;
       margin-left: auto;
       width: 20px !important;
       height: 20px;
@@ -209,6 +210,34 @@
       line-height: 1;
     }
 
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      margin-left: 4px;
+    }
+
+    .info-icon-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff6699, #E84B85);
+      color: white;
+      font-size: 12px;
+      font-style: italic;
+      font-family: Georgia, serif;
+      line-height: 1;
+    }
+
+    .info-icon:hover .info-icon-inner {
+      background: linear-gradient(135deg, #E84B85, #cc5580);
+    }
+
     .api-settings-card label {
       flex-basis: 60px;
       flex-shrink: 0;
@@ -220,6 +249,10 @@
 
     .enableAudioTranscription-field .groq-register-link {
       margin-left: 10px;
+    }
+
+    .enableAudioTranscription-field {
+      justify-content: space-between;
     }
 
     .api-url-container {

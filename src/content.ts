@@ -4,6 +4,7 @@ import { AIService } from './services/ai';
 import { WhitelistService } from './services/whitelist';
 import { AudioService } from './services/audio';
 import { CacheService } from './services/cache';
+import { CloudCacheService } from './services/cloud-cache';
 import { normalizeErrorForUser } from './utils/errors';
 
 // 新增：广告片段接口，用于支持交互状态
@@ -12,6 +13,32 @@ interface AdSegment {
   start: number;
   end: number;
   active: boolean; // true=绿色/跳过, false=灰色/不跳过
+}
+
+// 语音识别字幕分段
+interface TranscriptionSegment {
+  text?: string;
+  start?: number;
+  end?: number;
+}
+
+// 语音识别结果
+interface TranscriptionResult {
+  text?: string;
+  segments?: TranscriptionSegment[];
+}
+
+// 字幕条目
+interface CaptionItem {
+  content: string;
+  from: number;
+  to: number;
+  location?: number;
+}
+
+// 字幕数据结构
+interface CaptionsData {
+  body: CaptionItem[];
 }
 
 export interface AdDetectionJSON {
@@ -52,7 +79,7 @@ export function parseAdResult(raw: string, captionsLength = 0): AdDetectionJSON 
 
   const out: AdDetectionJSON = {
     exist: typeof obj.exist === "boolean" ? obj.exist : false,
-    good_name: Array.isArray(obj.good_name) ? obj.good_name.filter((x: any) => typeof x === "string") : [],
+    good_name: Array.isArray(obj.good_name) ? (obj.good_name as unknown[]).filter((x: unknown) => typeof x === "string") as string[] : [],
     index_lists: Array.isArray(obj.index_lists) ? obj.index_lists : []
   };
 
@@ -92,11 +119,23 @@ class AdDetector {
   private static adTimeRanges: number[][] = []; // 存储广告时间段 (仅包含active=true的，兼容旧逻辑)
   private static adSegments: AdSegment[] = []; // 新增：存储详细的广告片段状态 (支持交互)
   private static validIndexLists: number[][] = []; // 存储原始广告索引区间
+  private static userModifiedSegments: boolean = false; // 用户是否手动调整过广告区间
   private static timeUpdateListener: (() => void) | null = null; // 用于存储 timeupdate 监听器的引用
   private static adMarkerLayer: HTMLElement | null = null; // 添加标记层引用
   private static skipNotificationElement: HTMLElement | null = null; // 跳过提示元素引用
   private static skipButtonElement: HTMLElement | null = null; // 跳过按钮元素引用
+  private static feedbackButtonElement: HTMLElement | null = null; // 反馈按钮元素引用
   private static skipNotificationTimeout: number | null = null; // 跳过提示的延时器
+
+  /** 公开获取当前广告时间段（供消息处理器外部访问） */
+  public static getAdTimeRanges(): number[][] {
+    return this.adTimeRanges;
+  }
+
+  /** 公开获取用户是否手动修改过区间（供消息处理器外部访问） */
+  public static getUserModifiedSegments(): boolean {
+    return this.userModifiedSegments;
+  }
 
   /**
    * 从URL中提取BV号的通用方法
@@ -136,6 +175,7 @@ class AdDetector {
     this.adTimeRanges = [];
     this.adSegments = []; // 重置片段
     this.validIndexLists = [];
+    this.userModifiedSegments = false;
 
     // 清理延时器
     if (this.skipNotificationTimeout) {
@@ -154,6 +194,48 @@ class AdDetector {
 
     // 移除事件监听器
     this.removeAutoSkipListener();
+  }
+
+  /**
+   * 统一应用检测结果并初始化 UI（本地缓存、云端缓存、AI 检测三条路径共用）
+   */
+  private static async applyDetectionResult(
+    bvid: string,
+    result: { exist: boolean; goodName: string[]; adTimeRanges: number[][]; isDetectionConfident: boolean },
+    source: 'local' | 'remote' | 'ai'
+  ): Promise<void> {
+    const sourceLabel = source === 'local' ? '缓存' : source === 'remote' ? '云端' : '';
+
+    const videoElement = document.querySelector('video');
+
+    if (result.exist && result.adTimeRanges.length > 0) {
+      this.initAdSegments(result.adTimeRanges);
+
+      this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '')
+        + `发现${result.adTimeRanges.length}处广告${sourceLabel ? `（${sourceLabel}）` : ''}：${
+          result.adTimeRanges.map(([start, end]) => `${this.second2time(start)}~${this.second2time(end)}`).join(' | ')
+        }`;
+
+      if (videoElement) {
+        this.createSkipButton(videoElement, true);
+        this.createAdMarkers(videoElement);
+
+        const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
+        if (autoSkipAd && result.isDetectionConfident) {
+          console.log(`【VideoAdGuard】设置自动跳过监听器${sourceLabel ? `（${sourceLabel}结果）` : ''}`);
+          this.setupAutoSkip(videoElement);
+        }
+      }
+    } else {
+      this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '')
+        + `无广告内容${sourceLabel ? `（${sourceLabel}）` : ''}`;
+      this.removeAutoSkipListener();
+    }
+
+    // 检测流程完成后，无论是否有广告，都显示反馈按钮
+    if (videoElement) {
+      this.createSkipButton(videoElement, result.exist && result.adTimeRanges.length > 0);
+    }
   }
 
   /**
@@ -187,7 +269,10 @@ class AdDetector {
   private static async persistAdSegmentsToCache() {
     try {
       const bvid = this.getBvidFromUrl();
-      await CacheService.updateAdTimeRanges(bvid, this.adTimeRanges);
+      // 用户手动修正广告区间时，标记 recordSource 为 'user'，同时标记为可信
+      const recordSource = this.userModifiedSegments ? 'user' : undefined;
+      const isConfident = this.userModifiedSegments ? true : undefined;
+      await CacheService.updateAdTimeRanges(bvid, this.adTimeRanges, recordSource, isConfident);
     } catch (error) {
       console.warn('【VideoAdGuard】手动调整广告区间未能同步缓存:', error);
     }
@@ -209,45 +294,53 @@ class AdDetector {
 
       const bvid = this.getBvidFromUrl();
 
+      // 记录本次检测使用的模型信息，供云端缓存上传使用
+      let llmMeta = { provider: 'unknown', model: 'unknown' };
+
       // 清理过期缓存
       await CacheService.cleanExpiredCache();
 
-      // 先查找缓存
+      // 先查找本地缓存
       const cachedResult = await CacheService.getDetectionResult(bvid);
       if (cachedResult) {
-        console.log('【VideoAdGuard】使用缓存的检测结果');
-        // 初始化 segments
-        this.initAdSegments(cachedResult.adTimeRanges);
-
-        if (cachedResult.exist && this.adSegments.length > 0) {
-          this.adDetectionResult = this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + `发现${this.adSegments.length}处广告（缓存）：${
-            this.adSegments.map(seg => `${this.second2time(seg.start)}~${this.second2time(seg.end)}`).join(' | ')
-          }`;
-
-          // 获取video元素用于后续操作
-          const videoElement = document.querySelector("video");
-          if (videoElement) {
-            // 注入跳过按钮和标记层
-            this.createSkipButton(videoElement);
-            this.createAdMarkers(videoElement);
-
-            // 检查是否需要自动跳过（使用缓存中的可信度信息）
-            const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
-            if (autoSkipAd && cachedResult.isDetectionConfident) {
-              console.log("【VideoAdGuard】设置自动跳过监听器（缓存结果）");
-              this.setupAutoSkip(videoElement);
-            }
-          }
-        } else {
-          this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '无广告内容（缓存）';
-        }
-
-        console.log('【VideoAdGuard】缓存检测结果');
+        console.log('【VideoAdGuard】使用本地缓存的检测结果');
+        await this.applyDetectionResult(bvid, {
+          exist: cachedResult.exist,
+          goodName: cachedResult.goodName,
+          adTimeRanges: cachedResult.adTimeRanges,
+          isDetectionConfident: cachedResult.isDetectionConfident,
+        }, 'local');
         return;
       }
-      
-      // 获取视频信息
-      const videoInfo = await BilibiliService.getVideoInfo(bvid);
+
+      // 本地缓存未命中：并行查询云端缓存和视频信息
+      const [videoInfoResult, remoteCacheResult] = await Promise.allSettled([
+        BilibiliService.getVideoInfo(bvid),
+        CloudCacheService.fetchRemoteCache(bvid),
+      ]);
+
+      // 云端缓存命中 → 应用结果并写入本地缓存
+      if (remoteCacheResult.status === 'fulfilled' && remoteCacheResult.value) {
+        const remote = remoteCacheResult.value;
+        console.log('【VideoAdGuard】使用云端缓存的检测结果');
+
+        // 写入本地缓存（标记来源为 remote）
+        await CacheService.saveDetectionResult(bvid, remote.exist, remote.goodName, remote.adTimeRanges, remote.isDetectionConfident, 'remote', remote.detectedAt, remote.model, remote.provider);
+
+        await this.applyDetectionResult(bvid, {
+          exist: remote.exist,
+          goodName: remote.goodName,
+          adTimeRanges: remote.adTimeRanges,
+          isDetectionConfident: remote.isDetectionConfident,
+        }, 'remote');
+        return;
+      }
+
+      // 云端未命中，继续使用视频信息
+      if (videoInfoResult.status !== 'fulfilled') {
+        throw videoInfoResult.reason;
+      }
+      const videoInfo = videoInfoResult.value;
 
       // 检查UP主是否在白名单中
       const isUPWhitelisted = await WhitelistService.isWhitelisted(videoInfo.owner.mid.toString());
@@ -325,7 +418,7 @@ class AdDetector {
 
       // 获取字幕数据 - 统一的数据结构
       let captions: Record<number, string> = {};
-      let captionsData: any = null;
+      let captionsData: CaptionsData | null = null;
 
       // 判断是否有官方字幕
       if (playerInfo.subtitle?.subtitles?.length) {
@@ -335,7 +428,7 @@ class AdDetector {
         captionsData = await BilibiliService.getCaptions(captionsUrl);
 
         // 将官方字幕转换为统一格式
-        captionsData.body.forEach((caption: any, index: number) => {
+        captionsData!.body.forEach((caption: CaptionItem, index: number) => {
           captions[index] = caption.content;
         });
 
@@ -357,17 +450,17 @@ class AdDetector {
 
               // 将语音识别结果转换为统一的字幕格式
               if (result.transcription.segments && Array.isArray(result.transcription.segments)) {
-                const uniqueSegments = result.transcription.segments.filter((segment: any, index: number) => {
+                const uniqueSegments = result.transcription.segments.filter((segment: TranscriptionSegment, index: number) => {
                   if (!segment.text || !segment.text.trim()) return false;
                   // 检查是否与之前的分段有重复的文本内容
                   const currentText = segment.text.trim();
-                  return !result.transcription.segments.slice(0, index).some((prevSegment: any) => 
+                  return !(result.transcription as TranscriptionResult).segments!.slice(0, index).some((prevSegment: TranscriptionSegment) =>
                     prevSegment.text && prevSegment.text.trim() === currentText
                   );
                 });
 
                 // 使用分段信息创建字幕数据，包含准确的时间信息
-                uniqueSegments.forEach((segment: any, index: number) => {
+                uniqueSegments.forEach((segment: TranscriptionSegment, index: number) => {
                   if (segment.text && segment.text.trim()) {
                     captions[index] = segment.text.trim();
                   }
@@ -375,12 +468,12 @@ class AdDetector {
 
                 // 为音频识别创建准确的captionsData结构，使用Whisper提供的时间信息
                 captionsData = {
-                  body: uniqueSegments.map((segment: any) => ({
+                  body: uniqueSegments.map((segment: TranscriptionSegment) => ({
                     content: segment.text?.trim() || '',
                     from: segment.start || 0, // 使用Whisper提供的开始时间
                     to: segment.end || 0,     // 使用Whisper提供的结束时间
                     location: 2
-                  })).filter((item: any) => item.content) // 过滤掉空内容
+                  })).filter((item: { content: string }) => item.content) // 过滤掉空内容
                 };
               } 
               console.log('【VideoAdGuard】音频字幕数据已生成', {captions});
@@ -410,36 +503,41 @@ class AdDetector {
       if (isRestrictedMode && hasAdCondition) {
         console.log('【VideoAdGuard】限制模式：检测到可能存在广告，调用大模型进行详细分析...');
         console.log('【VideoAdGuard】限制模式：预提取的商品名称:', good_name);
-        rawResult = await AIService.detectAdRestricted({
+        const restrictResult = await AIService.detectAdRestricted({
           title: videoInfo.title,
           topComment: topComment,
-          addtionMessages: jumpUrlMessages,
+          additionalMessages: jumpUrlMessages,
           captions: captions,
           goodNames: good_name
         });
+        rawResult = restrictResult;
+        llmMeta = { provider: restrictResult.provider, model: restrictResult.model };
       } else {
         // 正常模式：使用统一的captions数据进行AI分析
         console.log('【VideoAdGuard】开始AI广告检测分析...');
-        rawResult = await AIService.detectAd({
+        const normalResult = await AIService.detectAd({
           title: videoInfo.title,
           topComment: topComment,
-          addtionMessages: jumpUrlMessages,
+          additionalMessages: jumpUrlMessages,
           captions: captions
         });
+        rawResult = normalResult;
+        llmMeta = { provider: normalResult.provider, model: normalResult.model };
       }
 
       // 处理可能的转义字符并解析 JSON
       let result;
       try {
-        const cleanJson = typeof rawResult === 'string'
-          ? rawResult
+        const rawText = rawResult.text;
+        const cleanJson = typeof rawText === 'string'
+          ? rawText
               .replace(/\/\/.*$/gm, '')    // 删除单行注释 //注释内容
               .replace(/\/\*[\s\S]*?\*\//g, '') // 删除多行注释 /* 注释内容 */
               .replace(/\s+/g, '')     // 删除所有空白字符
               .replace(/\\/g, '')
               .replace(/json/g, '')
               .replace(/```/g, '')
-          : JSON.stringify(rawResult);
+          : JSON.stringify(rawText);
 
         result = parseAdResult(cleanJson);
 
@@ -472,21 +570,14 @@ class AdDetector {
 
         // 合并相交、相邻或间隔为1的广告索引区间
         let mergedIndexLists: number[][] = [];
-        if (this.validIndexLists.length > 0) { // 使用过滤后的列表
-          // 1. 按起始索引排序
-          const sortedLists = [...this.validIndexLists].sort((a, b) => a[0] - b[0]); // 对过滤后的列表排序
-
-          // 2. 初始化合并后的列表
-          mergedIndexLists.push([...sortedLists[0]]); // 添加第一个区间
-
-          // 3. 遍历并合并
+        if (this.validIndexLists.length > 0) {
+          const sortedLists = [...this.validIndexLists].sort((a, b) => a[0] - b[0]);
+          mergedIndexLists.push([...sortedLists[0]]);
           for (let i = 1; i < sortedLists.length; i++) {
             const currentStart = sortedLists[i][0];
             const currentEnd = sortedLists[i][1];
             const lastMerged = mergedIndexLists[mergedIndexLists.length - 1];
             const lastMergedEnd = lastMerged[1];
-
-            // 如果当前区间的开始 <= 上一个合并区间的结束+1 (允许相邻，如 [1,2], [3,4])
             if (currentStart <= lastMergedEnd + 1) {
               lastMerged[1] = Math.max(lastMergedEnd, currentEnd);
             } else {
@@ -494,58 +585,72 @@ class AdDetector {
             }
           }
         }
-        const second_lists = this.index2second(mergedIndexLists, captionsData.body);
-        
-        // 初始化 segments 并同步 timeRanges
-        this.initAdSegments(second_lists);
+        const second_lists = this.index2second(mergedIndexLists, captionsData!.body);
 
-        this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + `发现${second_lists.length}处广告：${
-          second_lists.map(([start, end]) => `${this.second2time(start)}~${this.second2time(end)}`).join(' | ')
-        }`;
+        const videoElement = document.querySelector('video');
+        const videoDuration = videoElement ? videoElement.duration : 0;
 
-        // 首先获取video元素和总时长
-        const videoElement = document.querySelector("video");
-        if (!videoElement) {
-          console.warn('未找到视频元素');
-          throw new Error(normalizeErrorForUser('操作失败', 'detection'));
-        }
-        const videoDuration = videoElement ? videoElement.duration : 0; // 获取视频总时长
-
-        // 计算总广告时长
         let totalAdDuration = 0;
         if (second_lists && second_lists.length > 0) {
-            totalAdDuration = second_lists.reduce((sum, [start, end]) => sum + (end - start), 0);
+          totalAdDuration = second_lists.reduce((sum, [start, end]) => sum + (end - start), 0);
         }
 
-        // 计算检测结果可信度
         const isDetectionConfident =
-            second_lists.length > 0 &&                     // 1. 确实检测到了广告时间段
-            this.validIndexLists.length <= 3 &&                 // 2. 原始广告片段数量不多于3个
-            totalAdDuration < (videoDuration * 0.5);            // 3. 总广告时长小于视频总时长的50%
+          second_lists.length > 0 &&
+          this.validIndexLists.length <= 3 &&
+          totalAdDuration < (videoDuration * 0.5);
 
-        // 保存检测结果到缓存
-        await CacheService.saveDetectionResult(bvid, true, result.good_name || [], second_lists, isDetectionConfident);
-        
-        // 注入跳过按钮
-        this.createSkipButton(videoElement);
-        // 创建并显示广告标记层
-        this.createAdMarkers(videoElement);
+        await CacheService.saveDetectionResult(bvid, true, result.good_name || [], second_lists, isDetectionConfident, 'local', undefined, llmMeta.model, llmMeta.provider);
 
-        const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
+        // 异步上传云端缓存（不 await，不阻塞）
+        void CloudCacheService.saveRemoteCache(bvid, {
+          exist: true,
+          goodName: result.good_name || [],
+          adTimeRanges: second_lists,
+          model: llmMeta.model,
+          provider: llmMeta.provider,
+          detectedAt: Date.now(),
+          isDetectionConfident,
+          accuracy: 'accurate',
+          source: 'ai',
+          version: 1,
+        });
 
-        // 如果开启了自动跳过，则设置监听器
-        if (autoSkipAd && isDetectionConfident ) {
-            console.log("【VideoAdGuard】设置自动跳过监听器");
-            this.setupAutoSkip(videoElement);
-        }
-        
+        await this.applyDetectionResult(bvid, {
+          exist: true,
+          goodName: result.good_name || [],
+          adTimeRanges: second_lists,
+          isDetectionConfident,
+        }, 'ai');
+
       } else {
         console.log('【VideoAdGuard】无广告内容');
         this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '无广告内容';
         this.removeAutoSkipListener();
 
-        // 保存无广告结果到缓存
         await CacheService.saveDetectionResult(bvid, false, [], [], false);
+
+        // 同步调用 applyDetectionResult 确保反馈按钮被创建
+        await this.applyDetectionResult(bvid, {
+          exist: false,
+          goodName: [],
+          adTimeRanges: [],
+          isDetectionConfident: false,
+        }, 'ai');
+
+        // 异步上传无广告结果到云端
+        void CloudCacheService.saveRemoteCache(bvid, {
+          exist: false,
+          goodName: [],
+          adTimeRanges: [],
+          model: llmMeta.model,
+          provider: llmMeta.provider,
+          detectedAt: Date.now(),
+          isDetectionConfident: false,
+          accuracy: 'accurate',
+          source: 'ai',
+          version: 1,
+        });
       }
 
     } catch (error) {
@@ -647,7 +752,7 @@ class AdDetector {
       const endPercent = (segment.end / duration) * 100;
       marker.style.left = `${startPercent}%`;
       marker.style.width = `${endPercent - startPercent}%`;
-      marker.style.backgroundColor = segment.active ? '#4CAF50' : '#808080'; // 绿色 / 灰色
+      marker.style.backgroundColor = segment.active ? '#ff6699' : '#808080'; // 粉色 / 灰色
       marker.style.opacity = segment.active ? '1' : '0.6';
     };
 
@@ -775,6 +880,8 @@ class AdDetector {
             console.log(`【VideoAdGuard】切换广告段状态: ${segment.active ? '开启' : '关闭'}`);
           } else {
              console.log(`【VideoAdGuard】调整广告段完成: ${this.second2time(segment.start)} - ${this.second2time(segment.end)}`);
+             // 标记为用户手动修改
+             AdDetector.userModifiedSegments = true;
           }
           
           mode = null;
@@ -808,17 +915,17 @@ class AdDetector {
     // 移除已有的提示
     this.removeSkipNotification();
 
-    // 查找视频播放器容器
-    const videoArea = document.querySelector('.bpx-player-video-area');
-    if (!videoArea) {
-      console.warn('【VideoAdGuard】未找到视频播放器容器，无法显示跳过提示');
-      return;
-    }
-
     // 获取视频元素
     const videoElement = document.querySelector('video') as HTMLVideoElement;
     if (!videoElement) {
       console.warn('【VideoAdGuard】未找到视频元素');
+      return;
+    }
+
+    // 绑定到视频播放器主容器（整个播放器区域，确保即使进度条未激活也能显示）
+    const playerContainer = videoElement.closest('.bpx-player-container') || videoElement.parentElement;
+    if (!playerContainer) {
+      console.warn('【VideoAdGuard】未找到播放器容器');
       return;
     }
 
@@ -829,19 +936,21 @@ class AdDetector {
 
     notification.style.cssText = `
       position: absolute;
-      bottom: 20px;
-      right: 20px;
+      right: 24px;
+      bottom: 60px;
       background: rgba(0, 0, 0, 0.8);
       color: white;
-      padding: 12px 16px;
+      padding: 0 12px;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
       z-index: 10000;
       border: 2px solid rgba(255, 255, 255, 0.3);
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      transition: all 0.3s ease;
+      white-space: nowrap;
+      height: 32px;
+      line-height: 32px;
     `;
 
     // 添加悬停效果
@@ -882,8 +991,8 @@ class AdDetector {
     // 保存引用
     this.skipNotificationElement = notification;
 
-    // 添加到视频播放器容器
-    videoArea.appendChild(notification);
+    // 添加到播放器容器
+    playerContainer.appendChild(notification);
 
     // 设置5秒后自动移除（默认显示时间）
     this.skipNotificationTimeout = window.setTimeout(() => {
@@ -913,7 +1022,7 @@ class AdDetector {
 
 
 
-  private static index2second(indexLists: number[][], captions: any[]) {
+  private static index2second(indexLists: number[][], captions: CaptionItem[]) {
     // 直接生成时间范围列表
     const time_lists = indexLists.map(list => {
       const start = captions[list[0]]?.from || 0;
@@ -930,34 +1039,48 @@ class AdDetector {
     return `${hour > 0 ? hour + ':' : ''}${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   }
 
-  private static createSkipButton(videoElement: HTMLVideoElement) {
+  private static createSkipButton(videoElement: HTMLVideoElement, hasAd: boolean = true) {
     // 移除已有的跳过按钮
     this.removeSkipButton();
 
-    const player = document.querySelector('.bpx-player-control-bottom');
-    if (!player) {
-      console.warn("【VideoAdGuard】未找到播放器底部控制栏");
+    // 绑定到播放器控制栏（进度条上方）
+    const controlBar = document.querySelector('.bpx-player-control-bottom');
+    if (!controlBar) {
+      console.warn("【VideoAdGuard】未找到播放器控制栏");
       return;
     };
 
+    // 创建按钮容器
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'button-container10032';
+    buttonContainer.style.cssText = `
+      position: absolute;
+      right: 12px;
+      bottom: 100%;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 10000;
+    `;
+
+    // 创建跳过按钮
     const skipButton = document.createElement('button');
     skipButton.className = 'skip-ad-button10032';
     skipButton.textContent = '跳过广告';
     skipButton.style.cssText = `
-      position: absolute;
-      right: 20px;
-      bottom: 100px;
       background: rgba(0, 0, 0, 0.8);
       color: white;
-      padding: 12px 16px;
+      padding: 0 12px;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
-      z-index: 10000;
       border: 2px solid rgba(255, 255, 255, 0.3);
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      transition: all 0.3s ease;
+      white-space: nowrap;
+      height: 32px;
+      line-height: 32px;
     `;
 
     // 添加悬停效果
@@ -972,24 +1095,117 @@ class AdDetector {
     });
 
     // 保存引用
-    this.skipButtonElement = skipButton;
+    if (hasAd) {
+      this.skipButtonElement = skipButton;
+    }
 
-    player.appendChild(skipButton);
+    // 创建反馈按钮（与跳过按钮样式一致，正方形）
+    const feedbackButton = document.createElement('button');
+    feedbackButton.className = 'feedback-button10032';
+    feedbackButton.title = '点击反馈此检测结果不准确';
+    feedbackButton.innerHTML = '&#x2717;'; // ✗ 符号
+    feedbackButton.style.cssText = `
+      background: rgba(0, 0, 0, 0.8);
+      color: rgba(255, 255, 255, 0.7);
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    `;
 
-    // 点击跳过按钮
-    skipButton.addEventListener('click', () => {
-      const currentTime = videoElement.currentTime;
-      console.log('【VideoAdGuard】当前时间:', currentTime);
-      // 查找当前是否在某个活跃广告段内
-      const adSegment = this.adTimeRanges.find(([start, end]) =>
-        currentTime >= Math.max(start-10,0) && currentTime < end
-      );
+    feedbackButton.addEventListener('mouseenter', () => {
+      feedbackButton.style.background = 'rgba(255, 100, 100, 0.8)';
+      feedbackButton.style.color = 'white';
+      feedbackButton.style.borderColor = 'rgba(255, 255, 255, 0.6)';
+    });
 
-      if (adSegment) {
-        videoElement.currentTime = adSegment[1]; // 跳到广告段结束时间
-        console.log('【VideoAdGuard】跳转时间:',adSegment[1]);
+    feedbackButton.addEventListener('mouseleave', () => {
+      feedbackButton.style.background = 'rgba(0, 0, 0, 0.8)';
+      feedbackButton.style.color = 'rgba(255, 255, 255, 0.7)';
+      feedbackButton.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+    });
+
+    feedbackButton.addEventListener('click', async () => {
+      const bvid = this.getBvidFromUrl();
+      if (bvid) {
+        // 检查用户是否手动调整过广告区间
+        const isUserModified = this.userModifiedSegments;
+
+        // 获取本地缓存以发送完整的云端数据
+        const cachedRecord = await CacheService.getDetectionResult(bvid);
+
+        // 直接使用本地缓存的 recordSource 作为云端的 source
+        const source = cachedRecord?.recordSource || (this.userModifiedSegments ? 'user' : 'ai');
+
+        const success = await CloudCacheService.saveRemoteCache(bvid, {
+          exist: cachedRecord?.exist ?? this.adTimeRanges.length > 0,
+          goodName: cachedRecord?.goodName || [],
+          adTimeRanges: this.adTimeRanges,
+          model: cachedRecord?.model || 'unknown',
+          provider: cachedRecord?.provider || 'unknown',
+          detectedAt: cachedRecord?.detectedAt || Date.now(),
+          isDetectionConfident: cachedRecord?.isDetectionConfident ?? false,
+          accuracy: 'accurate',
+          source,
+          version: 1,
+        }, isUserModified ? undefined : 'inaccurate');
+
+        if (success) {
+          if (!isUserModified) {
+            // 仅在非用户修正情况下标记本地缓存为不准确
+            await CacheService.markAsInaccurate(bvid);
+          }
+          feedbackButton.textContent = isUserModified ? '✓ 已提交修正' : '✓ 反馈成功';
+          feedbackButton.style.background = 'rgba(100, 200, 100, 0.9)';
+          feedbackButton.style.color = 'white';
+          feedbackButton.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+          feedbackButton.style.width = 'auto';
+          feedbackButton.style.padding = '0 12px';
+          setTimeout(() => {
+            feedbackButton.textContent = '';
+            feedbackButton.innerHTML = '&#x2717;';
+            feedbackButton.style.background = 'rgba(0, 0, 0, 0.8)';
+            feedbackButton.style.color = 'rgba(255, 255, 255, 0.7)';
+            feedbackButton.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            feedbackButton.style.width = '32px';
+            feedbackButton.style.padding = '0';
+          }, 2000);
+        }
       }
     });
+
+    // 保存反馈按钮引用
+    this.feedbackButtonElement = feedbackButton;
+
+    // 按顺序添加按钮（跳过按钮在左，反馈按钮在右）
+    if (hasAd) {
+      buttonContainer.appendChild(skipButton);
+    }
+    buttonContainer.appendChild(feedbackButton);
+    controlBar.appendChild(buttonContainer);
+
+    // 点击跳过按钮
+    if (hasAd) {
+      skipButton.addEventListener('click', () => {
+        const currentTime = videoElement.currentTime;
+        console.log('【VideoAdGuard】当前时间:', currentTime);
+        // 查找当前是否在某个活跃广告段内
+        const adSegment = this.adTimeRanges.find(([start, end]) =>
+          currentTime >= Math.max(start-10,0) && currentTime < end
+        );
+
+        if (adSegment) {
+          videoElement.currentTime = adSegment[1]; // 跳到广告段结束时间
+          console.log('【VideoAdGuard】跳转时间:',adSegment[1]);
+        }
+      });
+    }
 
     console.log('【VideoAdGuard】已创建跳过按钮');
   }
@@ -1000,8 +1216,15 @@ class AdDetector {
       this.skipButtonElement.remove();
       this.skipButtonElement = null;
     }
+    if (this.feedbackButtonElement) {
+      this.feedbackButtonElement = null;
+    }
     // 同时清理可能存在的其他跳过按钮元素
     document.querySelectorAll('.skip-ad-button10032').forEach(element => {
+      element.remove();
+    });
+    // 清理按钮容器
+    document.querySelectorAll('.button-container10032').forEach(element => {
       element.remove();
     });
   }
@@ -1077,8 +1300,17 @@ class AdDetector {
 // 消息监听器：
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === 'GET_AD_INFO') {
-    sendResponse({ 
+    let bvid: string | null = null;
+    try {
+      bvid = AdDetector.getBvidFromUrl();
+    } catch {
+      bvid = null;
+    }
+    sendResponse({
       adInfo: AdDetector.adDetectionResult || '广告检测尚未完成',
+      adTimeRanges: AdDetector.getAdTimeRanges(),
+      userModified: AdDetector.getUserModifiedSegments(),
+      bvid,
       timestamp: Date.now()
     });
   }
