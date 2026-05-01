@@ -4,7 +4,7 @@ import { LLMInvokePayload, LLMInvokeResult, LLMResponseFormat } from './llm/type
 interface VideoInfo {
   title: string;
   topComment: string | null;
-  addtionMessages: Record<string, Record<string, any>> | null;
+  additionalMessages: Record<string, Record<string, unknown>> | null;
   captions: Record<number, string>;
 }
 
@@ -78,7 +78,7 @@ export class AIService {
 视频信息：
 标题：${videoInfo.title}
 置顶评论：${videoInfo.topComment || '无'}
-附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
+附加信息：${JSON.stringify(videoInfo.additionalMessages) || '无'}
 
 检测规则：
 1. 只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告
@@ -108,7 +108,7 @@ export class AIService {
 视频信息：
 标题：${videoInfo.title}
 置顶评论：${videoInfo.topComment || '无'}
-附加信息：${JSON.stringify(videoInfo.addtionMessages) || '无'}
+附加信息：${JSON.stringify(videoInfo.additionalMessages) || '无'}
 
 限制模式检测规则：
 1. 只有当内容明确包含商业推广、产品推荐且有明确的购买引导时，才认定为广告
