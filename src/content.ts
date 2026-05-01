@@ -217,7 +217,6 @@ class AdDetector {
         }`;
 
       if (videoElement) {
-        this.createSkipButton(videoElement, true);
         this.createAdMarkers(videoElement);
 
         const { autoSkipAd } = await chrome.storage.local.get({ autoSkipAd: false });
@@ -878,6 +877,8 @@ class AdDetector {
             segment.active = !segment.active;
             updateMarkerVisual(marker, segment, duration);
             console.log(`【VideoAdGuard】切换广告段状态: ${segment.active ? '开启' : '关闭'}`);
+            // 点击切换状态也视为用户修正
+            AdDetector.userModifiedSegments = true;
           } else {
              console.log(`【VideoAdGuard】调整广告段完成: ${this.second2time(segment.start)} - ${this.second2time(segment.end)}`);
              // 标记为用户手动修改
@@ -1151,10 +1152,10 @@ class AdDetector {
           provider: cachedRecord?.provider || 'unknown',
           detectedAt: cachedRecord?.detectedAt || Date.now(),
           isDetectionConfident: cachedRecord?.isDetectionConfident ?? false,
-          accuracy: 'accurate',
+          accuracy: isUserModified ? 'accurate' : 'inaccurate',
           source,
           version: 1,
-        }, isUserModified ? undefined : 'inaccurate');
+        });
 
         if (success) {
           if (!isUserModified) {

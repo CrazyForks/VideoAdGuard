@@ -28,8 +28,6 @@
    npm run deploy
    ```
 
-5. 将部署后的 Worker URL（如 `https://video-ad-guard.xxx.workers.dev`）填入扩展设置的"云端缓存 Worker URL"中
-
 ## API
 
 | 方法 | 路径 | 说明 |

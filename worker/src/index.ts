@@ -41,16 +41,6 @@ interface ValidatedSaveData {
   clientVersion: string;
 }
 
-interface RateLimitConfig {
-  windowMs: number;
-  max: number;
-}
-
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
-
 // ============= 常量 =============
 
 const DATA_VERSION = 1;
@@ -63,18 +53,12 @@ const MAX_TIME_VALUE = 86400;
 const MAX_STRING_LENGTH = 100;
 const MAX_FUTURE_MS = 86400000; // 允许的最大未来时间（1天）
 
-const RATE_LIMITS: Record<'getCache' | 'saveCache', RateLimitConfig> = {
-  getCache: { windowMs: 1000, max: 2 },
-  saveCache: { windowMs: 60_000, max: 1 },
-};
-
-const RATE_LIMIT_CLEANUP_INTERVAL = 100;
-const RATE_LIMIT_CLEANUP_WINDOW = 60_000;
-
-// ============= 状态 =============
-
-const rateLimitStore = new Map<string, RateLimitEntry>();
-let requestCount = 0;
+// ============= 导入 rate limit 模块 =============
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  maybeCleanupRateLimit,
+} from './rateLimit';
 
 // ============= 工具函数 =============
 
@@ -84,46 +68,6 @@ function getKvOptions(ttl: number): { expirationTtl: number } | undefined {
 
 function isValidBvid(bvid: string): boolean {
   return typeof bvid === 'string' && /^BV1[0-9A-Za-z]{8,}$/.test(bvid);
-}
-
-function checkRateLimit(key: string, limit: RateLimitConfig): boolean {
-  const now = Date.now();
-  const entry = rateLimitStore.get(key);
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitStore.set(key, { count: 1, resetAt: now + limit.windowMs });
-    return true;
-  }
-
-  if (entry.count >= limit.max) {
-    return false;
-  }
-
-  entry.count++;
-  return true;
-}
-
-function cleanupExpiredRateLimitEntries(): void {
-  const now = Date.now();
-  let cleaned = 0;
-
-  for (const [key, entry] of rateLimitStore) {
-    if (now > entry.resetAt && now > entry.resetAt + RATE_LIMIT_CLEANUP_WINDOW) {
-      rateLimitStore.delete(key);
-      cleaned++;
-    }
-  }
-
-  if (cleaned > 0) {
-    console.log(`[RateLimit] 清理了 ${cleaned} 个过期条目，剩余 ${rateLimitStore.size}`);
-  }
-}
-
-function maybeCleanupRateLimit(): void {
-  requestCount++;
-  if (requestCount % RATE_LIMIT_CLEANUP_INTERVAL === 0) {
-    cleanupExpiredRateLimitEntries();
-  }
 }
 
 // ============= 数据验证 =============
@@ -138,7 +82,7 @@ function validateAdTimeRanges(ranges: unknown): number[][] | null {
       return null;
     }
     const [start, end] = range;
-    if (typeof start !== 'number' || typeof end !== 'number') {
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
       return null;
     }
     if (start < 0 || end < 0 || start > MAX_TIME_VALUE || end > MAX_TIME_VALUE) {
@@ -310,43 +254,59 @@ export default {
         return errorResponse('数据格式非法或字段超限', 400);
       }
 
-      // 用户修正反馈：仅更新 accuracy 和 source，保留其他字段
-      if (validated.source === 'user') {
-        const existingValue = await env.VIDEO_AD_GUARD_KV.get(validated.bvid);
-        if (existingValue) {
-          try {
-            const existingRecord = JSON.parse(existingValue) as AdRecord;
-            const updatedRecord: AdRecord = {
-              ...existingRecord,
-              accuracy: validated.accuracy,
-              source: validated.source,
-            };
-            await env.VIDEO_AD_GUARD_KV.put(
-              validated.bvid,
-              JSON.stringify(updatedRecord),
-              getKvOptions(CACHE_TTL_SECONDS)
-            );
-            return jsonResponse({ success: true, data: { bvid: validated.bvid, accuracy: validated.accuracy } });
-          } catch {
-            // 解析失败，继续使用验证后的数据覆盖
-          }
-        }
-      }
+      // 统一更新逻辑：用新数据覆盖已有记录的所有字段
+      const existingValue = await env.VIDEO_AD_GUARD_KV.get(validated.bvid);
+      let record: AdRecord;
 
-      const record: AdRecord = {
-        bvid: validated.bvid,
-        exist: validated.exist,
-        goodName: validated.goodName,
-        adTimeRanges: validated.adTimeRanges,
-        model: validated.model,
-        provider: validated.provider,
-        detectedAt: validated.detectedAt,
-        isDetectionConfident: validated.isDetectionConfident,
-        accuracy: validated.accuracy,
-        source: validated.source,
-        version: DATA_VERSION,
-        clientVersion: validated.clientVersion,
-      };
+      if (existingValue) {
+        try {
+          const existingRecord = JSON.parse(existingValue) as AdRecord;
+          record = {
+            ...existingRecord,
+            exist: validated.exist,
+            goodName: validated.goodName,
+            adTimeRanges: validated.adTimeRanges,
+            model: validated.model,
+            provider: validated.provider,
+            detectedAt: validated.detectedAt,
+            isDetectionConfident: validated.isDetectionConfident,
+            accuracy: validated.accuracy,
+            source: validated.source,
+          };
+        } catch {
+          // 解析失败，用新数据覆盖
+          record = {
+            bvid: validated.bvid,
+            exist: validated.exist,
+            goodName: validated.goodName,
+            adTimeRanges: validated.adTimeRanges,
+            model: validated.model,
+            provider: validated.provider,
+            detectedAt: validated.detectedAt,
+            isDetectionConfident: validated.isDetectionConfident,
+            accuracy: validated.accuracy,
+            source: validated.source,
+            version: DATA_VERSION,
+            clientVersion: validated.clientVersion,
+          };
+        }
+      } else {
+        // 无旧记录，创建新记录
+        record = {
+          bvid: validated.bvid,
+          exist: validated.exist,
+          goodName: validated.goodName,
+          adTimeRanges: validated.adTimeRanges,
+          model: validated.model,
+          provider: validated.provider,
+          detectedAt: validated.detectedAt,
+          isDetectionConfident: validated.isDetectionConfident,
+          accuracy: validated.accuracy,
+          source: validated.source,
+          version: DATA_VERSION,
+          clientVersion: validated.clientVersion,
+        };
+      }
 
       await env.VIDEO_AD_GUARD_KV.put(
         validated.bvid,

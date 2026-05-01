@@ -19,7 +19,7 @@ function validateAdTimeRanges(ranges: unknown): number[][] | null {
       return null;
     }
     const [start, end] = range;
-    if (typeof start !== 'number' || typeof end !== 'number') {
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
       return null;
     }
     if (start < 0 || end < 0 || start > MAX_TIME_VALUE || end > MAX_TIME_VALUE) {
@@ -69,7 +69,7 @@ describe('Ad Time Range Validation', () => {
     expect(validateAdTimeRanges({})).toBe(null);
   });
 
-  it('returns null for empty array', () => {
+  it('returns empty array for empty input', () => {
     expect(validateAdTimeRanges([])).toEqual([]);
   });
 
@@ -84,11 +84,11 @@ describe('Ad Time Range Validation', () => {
     expect(validateAdTimeRanges([[0, 30, 60]])).toBe(null);
   });
 
-  it('returns null when range contains non-numbers', () => {
-    expect(validateAdTimeRanges([['0', 30]])).toBe(null);
-    expect(validateAdTimeRanges([[0, '30']])).toBe(null);
-    expect(validateAdTimeRanges([[null, 30]])).toBe(null);
-    expect(validateAdTimeRanges([[0, undefined]])).toBe(null);
+  it('returns null when range contains non-finite numbers', () => {
+    expect(validateAdTimeRanges([[NaN, 30]])).toBe(null);
+    expect(validateAdTimeRanges([[0, NaN]])).toBe(null);
+    expect(validateAdTimeRanges([[Infinity, 30]])).toBe(null);
+    expect(validateAdTimeRanges([[0, -Infinity]])).toBe(null);
   });
 
   // Invalid ranges - value issues
@@ -126,8 +126,6 @@ describe('Ad Time Range Validation', () => {
     expect(validateAdTimeRanges(ranges)).toEqual([[0.5, 30.5]]);
   });
 
-  // Note: NaN fails the isFinite check but passes typeof number check
-  // This is a known behavior - actual implementation uses isFinite indirectly
   it('returns valid ranges for valid numeric values', () => {
     const ranges = [[0, 30], [60, 90]];
     expect(validateAdTimeRanges(ranges)).toEqual(ranges);

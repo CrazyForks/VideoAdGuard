@@ -478,12 +478,22 @@ class CloudCacheRequestHandler {
         fetchOptions.body = JSON.stringify(body);
       }
 
-      const response = await Promise.race([
-        fetch(url, fetchOptions),
-        new Promise<Response>((_, reject) =>
-          setTimeout(() => reject(new Error('请求超时')), CloudCacheRequestHandler.REQUEST_TIMEOUT_MS)
-        ),
-      ]);
+      // 使用 AbortController 实现可取消的超时
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CloudCacheRequestHandler.REQUEST_TIMEOUT_MS);
+      fetchOptions.signal = controller.signal;
+
+      let response: Response;
+      try {
+        response = await fetch(url, fetchOptions);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('请求超时');
+        }
+        throw error;
+      }
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '未知错误');

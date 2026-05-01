@@ -59,7 +59,7 @@ describe('BVID Format Validation', () => {
     expect(isValidBvid('BV1rr4y1 S7uC')).toBe(false);
   });
 
-  it('returns false for BVID with numbers at start after BV1', () => {
+  it('returns true for BVID with numbers after BV1', () => {
     expect(isValidBvid('BV1000000000')).toBe(true); // Numbers are valid
   });
 
