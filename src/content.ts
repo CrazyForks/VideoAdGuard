@@ -1142,8 +1142,6 @@ class AdDetector {
 
         // 直接使用本地缓存的 recordSource 作为云端的 source
         const source = cachedRecord?.recordSource || (this.userModifiedSegments ? 'user' : 'ai');
-        // 用户修正时 isDetectionConfident 必须为 true
-        const isConfident = isUserModified ? true : (cachedRecord?.isDetectionConfident ?? false);
 
         const success = await CloudCacheService.saveRemoteCache(bvid, {
           exist: cachedRecord?.exist ?? this.adTimeRanges.length > 0,
@@ -1152,7 +1150,7 @@ class AdDetector {
           model: cachedRecord?.model || 'unknown',
           provider: cachedRecord?.provider || 'unknown',
           detectedAt: cachedRecord?.detectedAt || Date.now(),
-          isDetectionConfident: isConfident,
+          isDetectionConfident: cachedRecord?.isDetectionConfident ?? false,
           accuracy: 'accurate',
           source,
           version: 1,
