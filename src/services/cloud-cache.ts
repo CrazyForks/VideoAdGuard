@@ -11,6 +11,28 @@ interface WorkerResponse<T = unknown> {
   error?: string;
 }
 
+interface CacheQueryResponse {
+  bvid: string;
+  exist: boolean;
+  goodName: string[];
+  adTimeRanges: number[][];
+  model: string;
+  provider: string;
+  detectedAt: number;
+  isDetectionConfident: boolean;
+  accuracy: 'accurate' | 'inaccurate';
+  source: 'ai' | 'user';
+  version: number;
+  clientVersion?: string;
+}
+
+interface CacheResultResponse {
+  success: boolean;
+  data?: { bvid: string; accuracy: 'accurate' | 'inaccurate' };
+  error?: string;
+  exists?: boolean;
+}
+
 export class CloudCacheService {
   /**
    * 获取 Worker 基础 URL
@@ -82,8 +104,8 @@ export class CloudCacheService {
     }
 
     // 检查是否存在有效缓存
-    const exists = (result as any).exists;
-    if (!exists) {
+    const resultData = result.data as CacheQueryResponse | undefined;
+    if (!resultData?.adTimeRanges) {
       console.log(`【VideoAdGuard】[CloudCache] 云端无有效缓存: ${bvid}`);
       return null;
     }
