@@ -2,7 +2,7 @@
 
 本文件为 Claude Code (claude.ai/code) 提供代码库工作指南。
 
-## 构建命令
+## 构建和测试命令
 
 ```bash
 npm install          # 安装依赖
@@ -10,7 +10,21 @@ npm run build        # 构建 Chrome 和 Firefox 扩展
 npm run build:chrome # 仅构建 Chrome 扩展
 npm run build:firefox # 仅构建 Firefox 扩展
 npm run clean        # 清理构建产物
+
+# 测试命令
+npm test             # 运行所有测试（Vitest）
+npm run test:watch   # 监听模式（文件变化时重新运行）
+npm run test:coverage # 生成覆盖率报告
 ```
+
+**Worker 部署命令：**
+
+```bash
+cd worker
+npx wrangler deploy
+```
+
+部署地址：`https://videoadguard-api.xiaobaozi.cn`
 
 当你完成一项完整的修改后，运行构建命令，确认构建正确后便于我测试。
 
@@ -71,7 +85,7 @@ Webpack 通过别名替换 `./services/audio`：
 - Rate Limiting（GET 20次/秒，POST 10次/分）
 - 云端服务异常时静默降级，不影响本地检测
 
-**Worker 部署：** `https://video-ad-guard.tangziye2.workers.dev`
+**Worker 部署：** `https://videoadguard-api.xiaobaozi.cn`
 
 ### 关键技术细节
 - **AV to BV 转换**：`BilibiliService.convertAvToBv()` 本地算法
