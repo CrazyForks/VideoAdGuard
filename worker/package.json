@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0",
-    "@cloudflare/workers-types": "^4.20250101.0"
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "vitest": "^4.1.5",
+    "wrangler": "^3.0.0"
   }
 }
