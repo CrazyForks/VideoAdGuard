@@ -269,9 +269,10 @@ class AdDetector {
   private static async persistAdSegmentsToCache() {
     try {
       const bvid = this.getBvidFromUrl();
-      // 用户手动修正广告区间时，标记 recordSource 为 'user'
+      // 用户手动修正广告区间时，标记 recordSource 为 'user'，同时标记为可信
       const recordSource = this.userModifiedSegments ? 'user' : undefined;
-      await CacheService.updateAdTimeRanges(bvid, this.adTimeRanges, recordSource);
+      const isConfident = this.userModifiedSegments ? true : undefined;
+      await CacheService.updateAdTimeRanges(bvid, this.adTimeRanges, recordSource, isConfident);
     } catch (error) {
       console.warn('【VideoAdGuard】手动调整广告区间未能同步缓存:', error);
     }
@@ -1141,6 +1142,8 @@ class AdDetector {
 
         // 直接使用本地缓存的 recordSource 作为云端的 source
         const source = cachedRecord?.recordSource || (this.userModifiedSegments ? 'user' : 'ai');
+        // 用户修正时 isDetectionConfident 必须为 true
+        const isConfident = isUserModified ? true : (cachedRecord?.isDetectionConfident ?? false);
 
         const success = await CloudCacheService.saveRemoteCache(bvid, {
           exist: cachedRecord?.exist ?? this.adTimeRanges.length > 0,
@@ -1149,7 +1152,7 @@ class AdDetector {
           model: cachedRecord?.model || 'unknown',
           provider: cachedRecord?.provider || 'unknown',
           detectedAt: cachedRecord?.detectedAt || Date.now(),
-          isDetectionConfident: cachedRecord?.isDetectionConfident ?? false,
+          isDetectionConfident: isConfident,
           accuracy: 'accurate',
           source,
           version: 1,

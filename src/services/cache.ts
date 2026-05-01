@@ -269,8 +269,9 @@ export class CacheService {
    * @param bvid 视频BV号
    * @param adTimeRanges 最新的广告时间段
    * @param recordSource 可选：标记来源为 'user'（用户手动修正）
+   * @param isConfident 可选：标记为可信（手动修正后应为 true）
    */
-  public static async updateAdTimeRanges(bvid: string, adTimeRanges: number[][], recordSource?: 'user'): Promise<void> {
+  public static async updateAdTimeRanges(bvid: string, adTimeRanges: number[][], recordSource?: 'user', isConfident?: boolean): Promise<void> {
     try {
       const cache = await CacheService.getAllCache();
       const cacheKey = CacheService.generateCacheKey(bvid);
@@ -288,6 +289,7 @@ export class CacheService {
       if (recordSource === 'user') {
         item.recordSource = 'user';
         item.accuracy = 'accurate';
+        item.isDetectionConfident = isConfident ?? true;
       }
 
       await CacheService.saveAllCache(cache);
