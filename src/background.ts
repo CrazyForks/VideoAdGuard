@@ -19,11 +19,76 @@ enum MessageType {
   CLOUD_CACHE_REQUEST = 'CLOUD_CACHE_REQUEST',
 }
 
+// 通用消息结构
+interface BaseMessage {
+  type: string;
+}
+
+// API 请求消息
+interface ApiRequestMessage extends BaseMessage {
+  type: MessageType.API_REQUEST;
+  data: {
+    url: string;
+    headers: Record<string, string>;
+    body: Record<string, unknown>;
+  };
+}
+
+// LLM 调用消息
+interface LLMInvokeMessage extends BaseMessage {
+  type: MessageType.LLM_INVOKE;
+  payload: {
+    systemPrompt: string;
+    userPrompt: string;
+    responseFormat?: 'text' | 'json';
+    maxTokens?: number;
+    temperature?: number;
+  };
+}
+
+// 音频转录消息
+interface AudioTranscriptionMessage extends BaseMessage {
+  type: MessageType.TRANSCRIBE_AUDIO_FILE_STREAM;
+  data: {
+    audioUrl?: string;
+    audioBytes?: ArrayBuffer;
+    audioBlobUrl?: string;
+    fileInfo?: { name?: string; type?: string; size?: number };
+    apiKey: string;
+    options?: {
+      model?: string;
+      responseFormat?: string;
+      language?: string;
+      temperature?: number;
+      allowProxyFallback?: boolean;
+    };
+  };
+}
+
+// 云端缓存请求消息
+interface CloudCacheRequestMessage extends BaseMessage {
+  type: MessageType.CLOUD_CACHE_REQUEST;
+  payload: {
+    url: string;
+    method: 'GET' | 'POST';
+    headers: Record<string, string>;
+    body?: Record<string, unknown>;
+  };
+}
+
 // 响应接口
 interface ApiResponse {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
+}
+
+// 音频转录选项
+interface TranscriptionOptions {
+  model?: string;
+  responseFormat?: string;
+  language?: string;
+  temperature?: number;
 }
 
 // 消息处理器类
@@ -31,29 +96,29 @@ class MessageHandler {
   /**
    * 处理来自content script的消息
    */
-  static handleMessage(message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response: ApiResponse) => void): boolean {
+  static handleMessage(message: BaseMessage | ApiRequestMessage | LLMInvokeMessage | AudioTranscriptionMessage | CloudCacheRequestMessage, _sender: chrome.runtime.MessageSender, sendResponse: (response: ApiResponse) => void): boolean {
     try {
       // 处理语音识别请求
       if (message.type === MessageType.TRANSCRIBE_AUDIO_FILE_STREAM) {
-        AudioTranscriptionHandler.handle(message.data, sendResponse);
+        AudioTranscriptionHandler.handle((message as AudioTranscriptionMessage).data, sendResponse);
         return true; // 异步响应
       }
 
       // 处理模型调用请求
       if (message.type === MessageType.LLM_INVOKE) {
-        LLMInvokeHandler.handle(message, sendResponse);
+        LLMInvokeHandler.handle(message as LLMInvokeMessage, sendResponse);
         return true; // 异步响应
       }
 
       // 处理通用API请求
       if (MessageHandler.isApiRequest(message)) {
-        ApiRequestHandler.handle(message, sendResponse);
+        ApiRequestHandler.handle(message as ApiRequestMessage, sendResponse);
         return true; // 异步响应
       }
 
       // 处理云端缓存请求
       if (message.type === MessageType.CLOUD_CACHE_REQUEST) {
-        CloudCacheRequestHandler.handle(message.payload, sendResponse);
+        CloudCacheRequestHandler.handle((message as CloudCacheRequestMessage).payload, sendResponse);
         return true; // 异步响应
       }
 
@@ -73,11 +138,14 @@ class MessageHandler {
   /**
    * 检查是否为API请求
    */
-  private static isApiRequest(message: any): boolean {
-    if (message?.type === MessageType.API_REQUEST) {
-      return Boolean(message?.data?.url && message?.data?.headers && message?.data?.body);
+  private static isApiRequest(message: unknown): boolean {
+    const msg = message as BaseMessage;
+    if (msg?.type === MessageType.API_REQUEST) {
+      const data = (msg as ApiRequestMessage).data;
+      return Boolean(data?.url && data?.headers && data?.body);
     }
-    return Boolean(message?.url && message?.headers && message?.body);
+    const data = msg as { url?: unknown; headers?: unknown; body?: unknown };
+    return Boolean(data?.url && data?.headers && data?.body);
   }
 }
 
@@ -86,9 +154,9 @@ class ApiRequestHandler {
   /**
    * 处理通用API请求
    */
-  static async handle(message: any, sendResponse: (response: ApiResponse) => void): Promise<void> {
+  static async handle(message: ApiRequestMessage, sendResponse: (response: ApiResponse) => void): Promise<void> {
     try {
-      const payload = message?.type === MessageType.API_REQUEST ? message.data : message;
+      const payload = message.data;
       const { url, headers, body } = payload;
 
       if (!url) {
@@ -121,9 +189,9 @@ class ApiRequestHandler {
 }
 
 class LLMInvokeHandler {
-  static async handle(message: any, sendResponse: (response: ApiResponse) => void): Promise<void> {
+  static async handle(message: LLMInvokeMessage, sendResponse: (response: ApiResponse) => void): Promise<void> {
     try {
-      const payload = message?.payload as Partial<LLMInvokePayload> | undefined;
+      const payload = message.payload;
 
       if (!payload || typeof payload.systemPrompt !== 'string' || typeof payload.userPrompt !== 'string') {
         throw new Error('模型请求参数无效');
@@ -169,7 +237,7 @@ class AudioTranscriptionHandler {
    *  - audioBlobUrl(推荐在 Edge/Chrome：data:URL 或可直连的 http(s) URL)
    *  - audioUrl(兜底，后台自行下载)
    */
-  static async handle(data: any, sendResponse: (response: ApiResponse) => void): Promise<void> {
+  static async handle(data: AudioTranscriptionMessage['data'], sendResponse: (response: ApiResponse) => void): Promise<void> {
     try {
       console.log('【VideoAdGuard】[Background] 开始语音识别...');
 
@@ -190,13 +258,13 @@ class AudioTranscriptionHandler {
       }
 
       // 统一构建 Blob：使用 audioBytes / audioBlobUrl
-      const builtBlob = await this.buildAudioBlob({ audioBytes, audioBlobUrl, fileInfo });
+      const builtBlob = await this.buildAudioBlob(data);
 
       const sizeMB = (builtBlob.size / 1024 / 1024).toFixed(2);
       console.log(`【VideoAdGuard】[Background] 准备上传音频，大小: ${sizeMB}MB`);
 
       // 使用Blob调用Groq API
-  const result = await this.callGroqApiWithBlob(builtBlob, fileInfo, options, apiKey, allowProxyFallback);
+  const result = await this.callGroqApiWithBlob(builtBlob, fileInfo || {}, options || {}, apiKey, allowProxyFallback);
 
       console.log('【VideoAdGuard】[Background] 语音识别成功');
       sendResponse({ success: true, data: result });
@@ -210,11 +278,7 @@ class AudioTranscriptionHandler {
   }
 
   // 从多种输入构建Blob（支持 audioBytes / audioBlobUrl(blob:)）
-  private static async buildAudioBlob(input: {
-    audioBytes?: ArrayBuffer;
-    audioBlobUrl?: string; 
-    fileInfo?: any;
-  }): Promise<Blob> {
+  private static async buildAudioBlob(input: AudioTranscriptionMessage['data']): Promise<Blob> {
     const { audioBytes, audioBlobUrl, fileInfo } = input;
 
     let audioBlob: Blob | undefined;
@@ -225,12 +289,13 @@ class AudioTranscriptionHandler {
         const audioStream = audioResponse.body;
 
         // 将流包装成Response，然后转换为Blob，但使用更小的块
-        const streamResponse = new Response(audioStream, {
-          headers: {
-            'Content-Type': fileInfo.type,
-            'Content-Length': fileInfo.size.toString()
-          }
-        });
+        const fileType = fileInfo?.type || 'audio/m4a';
+        const fileSize = fileInfo?.size;
+        const headers: Record<string, string> = { 'Content-Type': fileType };
+        if (fileSize !== undefined) {
+          headers['Content-Length'] = fileSize.toString();
+        }
+        const streamResponse = new Response(audioStream, { headers });
         audioBlob = await streamResponse.blob();
     } else if (audioBytes instanceof ArrayBuffer) {
       const type = fileInfo?.type || 'audio/m4a';
@@ -256,11 +321,11 @@ class AudioTranscriptionHandler {
    */
   private static async callGroqApiWithBlob(
     audioBlob: Blob,
-    fileInfo: any,
-    options: any,
+    fileInfo: { name?: string; type?: string },
+    options: TranscriptionOptions,
     apiKey: string,
     allowProxyFallback: boolean
-  ): Promise<any> {
+  ): Promise<unknown> {
     const file = new File([audioBlob], fileInfo?.name || 'audio.m4a', {
       type: fileInfo?.type || 'audio/m4a',
       lastModified: Date.now()
@@ -274,11 +339,11 @@ class AudioTranscriptionHandler {
    */
   private static async callGroqApiWithStream(
     audioUrl: string,
-    fileInfo: any,
-    options: any,
+    fileInfo: { name?: string; type?: string; size?: number },
+    options: TranscriptionOptions,
     apiKey: string,
     allowProxyFallback: boolean
-  ): Promise<any> {
+  ): Promise<unknown> {
     // 获取音频流
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
@@ -319,7 +384,7 @@ class AudioTranscriptionHandler {
     return this.uploadWithFallback(() => this.buildTranscriptionFormData(file, options), apiKey, allowProxyFallback);
   }
 
-  private static buildTranscriptionFormData(file: File, options: any): FormData {
+  private static buildTranscriptionFormData(file: File, options: TranscriptionOptions): FormData {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('model', options?.model || this.DEFAULT_MODEL);
@@ -339,7 +404,7 @@ class AudioTranscriptionHandler {
     formDataFactory: () => FormData,
     apiKey: string,
     allowProxyFallback: boolean
-  ): Promise<any> {
+  ): Promise<unknown> {
     const endpoints: Array<{ url: string; label: string }> = [
       { url: this.GROQ_OFFICIAL_URL, label: '官方' }
     ];
@@ -394,7 +459,7 @@ class AudioTranscriptionHandler {
 class CloudCacheRequestHandler {
   private static readonly REQUEST_TIMEOUT_MS = 3000;
 
-  static async handle(payload: any, sendResponse: (response: ApiResponse) => void): Promise<void> {
+  static async handle(payload: CloudCacheRequestMessage['payload'], sendResponse: (response: ApiResponse) => void): Promise<void> {
     try {
       const { url, method, headers, body } = payload;
 
@@ -409,7 +474,7 @@ class CloudCacheRequestHandler {
         headers: headers || { 'Content-Type': 'application/json' },
       };
 
-      if (body && (method === 'POST' || method === 'PUT')) {
+      if (body && method === 'POST') {
         fetchOptions.body = JSON.stringify(body);
       }
 
