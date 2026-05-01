@@ -6,8 +6,9 @@ dist.pem
 
 *.zip
 
-*test*
+# Test temp files (but test/ dir itself is tracked)
 *.test.*
+coverage/
 
 temp/
 
