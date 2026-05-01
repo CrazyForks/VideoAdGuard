@@ -26,6 +26,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 ## News
 
+- v1.3.1 新增云端缓存功能，支持社区共享检测结果和用户反馈
 - v1.3.0 重构LLM模块，支持更多模型，包括Coding Plan
 - v1.2.9~v1.2.11 添加手动控制广告区间，修复已知bug
 - v1.2.8 提供Groq代理服务
@@ -46,6 +47,7 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 - 🚀 **便捷操作**：检测到广告后自动显示跳过按钮，一键跳过广告片段
 - 🔄 **自动跳过**：支持自动跳过已识别的广告内容
 - 💾 **智能缓存**：本地缓存检测结果，大幅提升重复访问速度
+- ☁️ **云端缓存**：社区共享检测结果，AI检测前优先查询云端缓存加速
 - 🌈 **广泛兼容**：支持多种主流浏览器，包括Edge、Chrome等
 - ⚙️ **灵活定制**：支持多种AI模型接入，包括智谱AI、OpenAI、DeepSeek等
 - 🏠 **本地部署**：支持本地Ollama模型，保护隐私数据
@@ -122,14 +124,26 @@ VideoAdGuard 是一个基于大语言模型的B站视频植入广告检测工具
 
 VideoAdGuard通过以下步骤检测视频中的植入广告
 
-### 字幕检测模式（默认）
+### 检测流程
 
-1. 获取视频字幕内容
+1. 获取视频字幕内容（如无字幕则启用音频识别）
 2. 提取视频标题和置顶评论
-3. 将数据发送给大语言模型进行分析
-4. 根据分析结果确定广告时间段
-5. 缓存检测结果到本地存储
-6. 在界面上显示跳过按钮
+3. **优先查询缓存**：先查本地缓存（24h），再并行查云端缓存
+4. 如云端命中，直接使用云端结果；否则调用大语言模型分析
+5. 将数据发送给大语言模型进行分析
+6. 根据分析结果确定广告时间段
+7. 缓存检测结果（本地24h + 云端30天）
+8. 在界面上显示跳过按钮和交互式标记层
+
+### 智能缓存机制
+
+- **本地缓存**：检测结果自动缓存24小时，避免重复分析
+- **云端缓存**（可选）：社区共享检测结果，AI检测前优先查询云端
+  - 每个视频仅维护一条记录：`ad:{bvid}`
+  - `accuracy: 'accurate'` 的记录可被查询使用
+  - 用户标记"不准确"后该记录查询时被跳过，下次访问将重新AI检测
+  - 用户提交修正后记录为 `source: 'user'`，可供他人使用
+- 云端服务异常时静默降级，不影响本地检测能力
 
 ### 音频识别模式
 
@@ -137,12 +151,6 @@ VideoAdGuard通过以下步骤检测视频中的植入广告
 2. 使用Groq Whisper API进行语音识别
 3. 将识别结果转换为文本格式
 4. 后续流程与字幕检测模式相同
-
-### 智能缓存机制
-
-- 本地缓存检测结果，避免重复分析
-- 缓存有效期为24小时，自动清理过期数据
-- 大幅提升重复访问视频的检测速度
 
 ## 目录结构
 
@@ -152,21 +160,42 @@ VideoAdGuard
 │   ├── chrome/                    # Chrome 打包目录
 │   └── firefox/                   # Firefox 打包目录
 ├── src/                           # 源代码目录
-│   ├── services/                  # 业务逻辑与平台适配
-│   ├── types/                     # 类型定义
-│   └── utils/                     # 工具函数
+│   ├── background.ts             # 后台脚本（跨域代理）
+│   ├── content.ts                # 内容脚本（广告检测逻辑）
+│   ├── popup.ts/.html            # 弹窗设置界面
+│   ├── services/                  # 业务逻辑
+│   │   ├── ai.ts                 # AI 检测提示词与解析
+│   │   ├── bilibili.ts           # B站 API 客户端
+│   │   ├── cache.ts              # 本地缓存服务（24h TTL）
+│   │   ├── cloud-cache.ts        # 云端缓存服务（Cloudflare KV）
+│   │   ├── whitelist.ts          # UP主白名单
+│   │   ├── audio.ts              # 音频识别（浏览器适配）
+│   │   └── llm/                   # LLM 提供商抽象
+│   │       ├── config.ts         # 提供商解析
+│   │       ├── providers.ts      # OpenAI/Anthropic/Custom Fetch
+│   │       └── types.ts          # LLM 类型定义
+│   ├── utils/                     # 工具函数
+│   │   ├── wbi.ts                # B站 WBI 签名
+│   │   ├── errors.ts            # 错误规范化
+│   │   └── logger.ts            # 日志工具
+│   └── types/                     # TypeScript 类型定义
+│       └── cloud-cache.ts        # 云端缓存类型定义
+├── worker/                        # Cloudflare Worker（云端缓存网关）
+│   ├── src/index.ts              # Worker 入口，API 路由
+│   ├── wrangler.toml             # Worker 配置
+│   ├── package.json              # Worker 依赖
+│   └── README.md                 # 部署文档
 ├── manifests/                     # 浏览器清单文件
-│   ├── manifest-chrome.json       # Chrome 清单
-│   └── manifest-firefox.json      # Firefox 清单
+│   ├── manifest-chrome.json      # Chrome 清单
+│   └── manifest-firefox.json     # Firefox 清单
 ├── _locales/                      # i18n 资源
 ├── icons/                         # 插件图标资源
-├── docs/                          # 文档与站点
-├── scripts/                       # 构建与辅助脚本
-│   └── build.js
-├── VideoAdGuard.Tampermonkey.js   # 油猴脚本版本
+├── scripts/                       # 构建脚本
+├── VideoAdGuard.Tampermonkey.js   # 油猴脚本版本（已停止维护）
 ├── webpack.config.js              # Webpack 构建配置
 ├── tsconfig.json                  # TypeScript 配置
 ├── package.json                   # 项目依赖与脚本
+├── CLAUDE.md                      # Claude Code 指南
 ├── LICENSE                        # 开源许可证
 └── README.md                      # 项目说明文档
 ```
