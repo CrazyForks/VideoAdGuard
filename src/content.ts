@@ -15,6 +15,32 @@ interface AdSegment {
   active: boolean; // true=绿色/跳过, false=灰色/不跳过
 }
 
+// 语音识别字幕分段
+interface TranscriptionSegment {
+  text?: string;
+  start?: number;
+  end?: number;
+}
+
+// 语音识别结果
+interface TranscriptionResult {
+  text?: string;
+  segments?: TranscriptionSegment[];
+}
+
+// 字幕条目
+interface CaptionItem {
+  content: string;
+  from: number;
+  to: number;
+  location?: number;
+}
+
+// 字幕数据结构
+interface CaptionsData {
+  body: CaptionItem[];
+}
+
 export interface AdDetectionJSON {
   exist: boolean;
   good_name: string[];
@@ -53,7 +79,7 @@ export function parseAdResult(raw: string, captionsLength = 0): AdDetectionJSON 
 
   const out: AdDetectionJSON = {
     exist: typeof obj.exist === "boolean" ? obj.exist : false,
-    good_name: Array.isArray(obj.good_name) ? obj.good_name.filter((x: any) => typeof x === "string") : [],
+    good_name: Array.isArray(obj.good_name) ? (obj.good_name as unknown[]).filter((x: unknown) => typeof x === "string") as string[] : [],
     index_lists: Array.isArray(obj.index_lists) ? obj.index_lists : []
   };
 
@@ -391,7 +417,7 @@ class AdDetector {
 
       // 获取字幕数据 - 统一的数据结构
       let captions: Record<number, string> = {};
-      let captionsData: any = null;
+      let captionsData: CaptionsData | null = null;
 
       // 判断是否有官方字幕
       if (playerInfo.subtitle?.subtitles?.length) {
@@ -401,7 +427,7 @@ class AdDetector {
         captionsData = await BilibiliService.getCaptions(captionsUrl);
 
         // 将官方字幕转换为统一格式
-        captionsData.body.forEach((caption: any, index: number) => {
+        captionsData!.body.forEach((caption: CaptionItem, index: number) => {
           captions[index] = caption.content;
         });
 
@@ -423,17 +449,17 @@ class AdDetector {
 
               // 将语音识别结果转换为统一的字幕格式
               if (result.transcription.segments && Array.isArray(result.transcription.segments)) {
-                const uniqueSegments = result.transcription.segments.filter((segment: any, index: number) => {
+                const uniqueSegments = result.transcription.segments.filter((segment: TranscriptionSegment, index: number) => {
                   if (!segment.text || !segment.text.trim()) return false;
                   // 检查是否与之前的分段有重复的文本内容
                   const currentText = segment.text.trim();
-                  return !result.transcription.segments.slice(0, index).some((prevSegment: any) => 
+                  return !(result.transcription as TranscriptionResult).segments!.slice(0, index).some((prevSegment: TranscriptionSegment) =>
                     prevSegment.text && prevSegment.text.trim() === currentText
                   );
                 });
 
                 // 使用分段信息创建字幕数据，包含准确的时间信息
-                uniqueSegments.forEach((segment: any, index: number) => {
+                uniqueSegments.forEach((segment: TranscriptionSegment, index: number) => {
                   if (segment.text && segment.text.trim()) {
                     captions[index] = segment.text.trim();
                   }
@@ -441,12 +467,12 @@ class AdDetector {
 
                 // 为音频识别创建准确的captionsData结构，使用Whisper提供的时间信息
                 captionsData = {
-                  body: uniqueSegments.map((segment: any) => ({
+                  body: uniqueSegments.map((segment: TranscriptionSegment) => ({
                     content: segment.text?.trim() || '',
                     from: segment.start || 0, // 使用Whisper提供的开始时间
                     to: segment.end || 0,     // 使用Whisper提供的结束时间
                     location: 2
-                  })).filter((item: any) => item.content) // 过滤掉空内容
+                  })).filter((item: { content: string }) => item.content) // 过滤掉空内容
                 };
               } 
               console.log('【VideoAdGuard】音频字幕数据已生成', {captions});
@@ -479,7 +505,7 @@ class AdDetector {
         const restrictResult = await AIService.detectAdRestricted({
           title: videoInfo.title,
           topComment: topComment,
-          addtionMessages: jumpUrlMessages,
+          additionalMessages: jumpUrlMessages,
           captions: captions,
           goodNames: good_name
         });
@@ -491,7 +517,7 @@ class AdDetector {
         const normalResult = await AIService.detectAd({
           title: videoInfo.title,
           topComment: topComment,
-          addtionMessages: jumpUrlMessages,
+          additionalMessages: jumpUrlMessages,
           captions: captions
         });
         rawResult = normalResult;
@@ -558,7 +584,7 @@ class AdDetector {
             }
           }
         }
-        const second_lists = this.index2second(mergedIndexLists, captionsData.body);
+        const second_lists = this.index2second(mergedIndexLists, captionsData!.body);
 
         const videoElement = document.querySelector('video');
         const videoDuration = videoElement ? videoElement.duration : 0;
@@ -995,7 +1021,7 @@ class AdDetector {
 
 
 
-  private static index2second(indexLists: number[][], captions: any[]) {
+  private static index2second(indexLists: number[][], captions: CaptionItem[]) {
     // 直接生成时间范围列表
     const time_lists = indexLists.map(list => {
       const start = captions[list[0]]?.from || 0;
