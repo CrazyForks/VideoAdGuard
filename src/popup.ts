@@ -1,6 +1,7 @@
 export { };
 import { WhitelistService } from './services/whitelist';
 import { BilibiliService } from './services/bilibili';
+import { CloudCacheService } from './services/cloud-cache';
 import { buildApiUrl, resolveLLMSettings } from './services/llm/config';
 import { LLMProvider, StoredLLMSettings } from './services/llm/types';
 import { normalizeErrorForUser } from './utils/errors';
@@ -33,6 +34,7 @@ const SDK_PRESETS: Record<LLMProvider, BaseUrlPreset[]> = {
     { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', actionLabel: '注册', actionUrl: 'https://platform.deepseek.com/api_keys' },
     { name: '硅基流动', baseUrl: 'https://api.siliconflow.com/v1', actionLabel: '注册', actionUrl: 'https://cloud.siliconflow.cn/i/VWOdVvvM' },
     { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', actionLabel: '注册', actionUrl: 'https://openrouter.ai/' },
+    { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', actionLabel: '注册', actionUrl: 'https://console.groq.com/keys' },
     { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', actionLabel: '注册', actionUrl: 'https://openai.com/api/' },
     { name: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', actionLabel: '注册', actionUrl: 'https://aistudio.google.com/' },
     { name: 'Grok', baseUrl: 'https://api.x.ai/v1', actionLabel: '注册', actionUrl: 'https://console.x.ai/' },
@@ -450,6 +452,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     'groqApiKey',
     'enableAudioTranscription',
     'enableGroqProxy',
+    'enableCloudCache',
+    'cloudCacheWorkerUrl',
   ]);
 
   const storedBaseUrlsByProvider = settings.baseUrlsByProvider as Partial<Record<LLMProvider, unknown>> | undefined;
@@ -525,7 +529,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    chrome.tabs.sendMessage(currentTab.id, { type: 'GET_AD_INFO' }, (response) => {
+    chrome.tabs.sendMessage(currentTab.id, { type: 'GET_AD_INFO' }, async (response) => {
       if (chrome.runtime.lastError) {
         resultDiv.textContent = '插件未完全加载，请等待或刷新';
         return;

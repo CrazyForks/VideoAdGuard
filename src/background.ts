@@ -15,7 +15,8 @@ export {}
 enum MessageType {
   TRANSCRIBE_AUDIO_FILE_STREAM = 'TRANSCRIBE_AUDIO_FILE_STREAM',
   LLM_INVOKE = 'LLM_INVOKE',
-  API_REQUEST = 'API_REQUEST'
+  API_REQUEST = 'API_REQUEST',
+  CLOUD_CACHE_REQUEST = 'CLOUD_CACHE_REQUEST',
 }
 
 // 响应接口
@@ -47,6 +48,12 @@ class MessageHandler {
       // 处理通用API请求
       if (MessageHandler.isApiRequest(message)) {
         ApiRequestHandler.handle(message, sendResponse);
+        return true; // 异步响应
+      }
+
+      // 处理云端缓存请求
+      if (message.type === MessageType.CLOUD_CACHE_REQUEST) {
+        CloudCacheRequestHandler.handle(message.payload, sendResponse);
         return true; // 异步响应
       }
 
@@ -380,6 +387,58 @@ class AudioTranscriptionHandler {
     }
 
     throw new Error(`Groq API调用失败${lastError ? `: ${lastError.message}` : ''}`);
+  }
+}
+
+// 云端缓存请求处理器
+class CloudCacheRequestHandler {
+  private static readonly REQUEST_TIMEOUT_MS = 3000;
+
+  static async handle(payload: any, sendResponse: (response: ApiResponse) => void): Promise<void> {
+    try {
+      const { url, method, headers, body } = payload;
+
+      if (!url || typeof url !== 'string') {
+        throw new Error('Worker URL 为空');
+      }
+
+      console.log(`【VideoAdGuard】[Background] 云端缓存请求: ${method} ${url}`);
+
+      const fetchOptions: RequestInit = {
+        method: method || 'GET',
+        headers: headers || { 'Content-Type': 'application/json' },
+      };
+
+      if (body && (method === 'POST' || method === 'PUT')) {
+        fetchOptions.body = JSON.stringify(body);
+      }
+
+      const response = await Promise.race([
+        fetch(url, fetchOptions),
+        new Promise<Response>((_, reject) =>
+          setTimeout(() => reject(new Error('请求超时')), CloudCacheRequestHandler.REQUEST_TIMEOUT_MS)
+        ),
+      ]);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '未知错误');
+        throw new Error(`${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json()
+        : await response.text();
+
+      console.log(`【VideoAdGuard】[Background] 云端缓存响应成功: ${url}`);
+      sendResponse({ success: true, data });
+    } catch (error) {
+      console.warn(`【VideoAdGuard】[Background] 云端缓存请求失败: ${error}`);
+      sendResponse({
+        success: false,
+        error: normalizeErrorForUser(error, 'network'),
+      });
+    }
   }
 }
 
