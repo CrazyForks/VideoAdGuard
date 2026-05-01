@@ -74,7 +74,7 @@
 
 ## Rate Limiting
 
-- GET: 每 IP 每秒 20 次
+- GET: 每 IP 每秒 2 次
 - POST: 每 IP 每分钟 10 次
 
 ## 安全
