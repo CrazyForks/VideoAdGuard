@@ -168,6 +168,21 @@ describe('convertAvToBv', () => {
         expect(bv).toMatch(/^BV1[0-9A-Za-z]{9}$/);
       }
     });
+
+    it('converts av116406548960622 to BV1PsQ7BDEQu', () => {
+      const result = convertAvToBv('116406548960622');
+      expect(result).toBe('BV1PsQ7BDEQu');
+    });
+
+    it('handles AV with av prefix (lowercase)', () => {
+      const result = convertAvToBv('av116406548960622');
+      expect(result).toBe('BV1PsQ7BDEQu');
+    });
+
+    it('handles AV with AV prefix (uppercase)', () => {
+      const result = convertAvToBv('AV116406548960622');
+      expect(result).toBe('BV1PsQ7BDEQu');
+    });
   });
 
   describe('Algorithm Verification', () => {
