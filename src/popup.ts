@@ -48,6 +48,7 @@ const SDK_PRESETS: Record<LLMProvider, BaseUrlPreset[]> = {
     { name: '百度 Coding Plan', baseUrl: 'https://qianfan.baidubce.com/v2/coding', actionLabel: '注册', actionUrl: 'https://cloud.baidu.com/product-s/qianfan_home' },
     { name: '302.AI', baseUrl: 'https://api.302.ai/v1', actionLabel: '注册', actionUrl: 'https://share.302.ai/ckUgCA' },
     { name: 'Requesty API', baseUrl: 'https://router.requesty.ai/v1', actionLabel: '注册', actionUrl: 'https://app.requesty.ai/join?ref=d9bb6cf2' },
+    { name: 'Xiaomi MiMo', baseUrl: 'https://api.xiaomimimo.com/v1', actionLabel: '注册', actionUrl: 'https://platform.xiaomimimo.com/#/console/api-keys' },
   ],
   anthropic: [
     { name: '智谱 AI', baseUrl: 'https://open.bigmodel.cn/api/anthropic', actionLabel: '注册', actionUrl: 'https://www.bigmodel.cn/glm-coding?ic=NZ1MQISIX0' },
