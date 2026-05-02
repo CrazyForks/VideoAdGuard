@@ -31,6 +31,7 @@ const SDK_PRESETS: Record<LLMProvider, BaseUrlPreset[]> = {
     { name: 'MiniMax', baseUrl: 'https://api.minimaxi.com/v1', actionLabel: '注册', actionUrl: 'https://platform.minimaxi.com/subscribe/token-plan?code=FapfOonxo7&source=link' },
     { name: 'Kimi', baseUrl: 'https://api.moonshot.ai/v1', actionLabel: '注册', actionUrl: 'https://platform.moonshot.cn/' },
     { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', actionLabel: '注册', actionUrl: 'https://platform.deepseek.com/api_keys' },
+    { name: 'Xiaomi MiMo', baseUrl: 'https://api.xiaomimimo.com/v1', actionLabel: '注册', actionUrl: 'https://platform.xiaomimimo.com?ref=HFFE2V' },
     { name: '硅基流动', baseUrl: 'https://api.siliconflow.com/v1', actionLabel: '注册', actionUrl: 'https://cloud.siliconflow.cn/i/VWOdVvvM' },
     { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', actionLabel: '注册', actionUrl: 'https://openrouter.ai/' },
     { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', actionLabel: '注册', actionUrl: 'https://console.groq.com/keys' },
@@ -48,7 +49,6 @@ const SDK_PRESETS: Record<LLMProvider, BaseUrlPreset[]> = {
     { name: '百度 Coding Plan', baseUrl: 'https://qianfan.baidubce.com/v2/coding', actionLabel: '注册', actionUrl: 'https://cloud.baidu.com/product-s/qianfan_home' },
     { name: '302.AI', baseUrl: 'https://api.302.ai/v1', actionLabel: '注册', actionUrl: 'https://share.302.ai/ckUgCA' },
     { name: 'Requesty API', baseUrl: 'https://router.requesty.ai/v1', actionLabel: '注册', actionUrl: 'https://app.requesty.ai/join?ref=d9bb6cf2' },
-    { name: 'Xiaomi MiMo', baseUrl: 'https://api.xiaomimimo.com/v1', actionLabel: '注册', actionUrl: 'https://platform.xiaomimimo.com?ref=HFFE2V' },
   ],
   anthropic: [
     { name: '智谱 AI', baseUrl: 'https://open.bigmodel.cn/api/anthropic', actionLabel: '注册', actionUrl: 'https://www.bigmodel.cn/glm-coding?ic=NZ1MQISIX0' },
