@@ -31,6 +31,7 @@ const SDK_PRESETS: Record<LLMProvider, BaseUrlPreset[]> = {
     { name: 'MiniMax', baseUrl: 'https://api.minimaxi.com/v1', actionLabel: '注册', actionUrl: 'https://platform.minimaxi.com/subscribe/token-plan?code=FapfOonxo7&source=link' },
     { name: 'Kimi', baseUrl: 'https://api.moonshot.ai/v1', actionLabel: '注册', actionUrl: 'https://platform.moonshot.cn/' },
     { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', actionLabel: '注册', actionUrl: 'https://platform.deepseek.com/api_keys' },
+    { name: 'Xiaomi MiMo', baseUrl: 'https://api.xiaomimimo.com/v1', actionLabel: '注册', actionUrl: 'https://platform.xiaomimimo.com?ref=HFFE2V' },
     { name: '硅基流动', baseUrl: 'https://api.siliconflow.com/v1', actionLabel: '注册', actionUrl: 'https://cloud.siliconflow.cn/i/VWOdVvvM' },
     { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', actionLabel: '注册', actionUrl: 'https://openrouter.ai/' },
     { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', actionLabel: '注册', actionUrl: 'https://console.groq.com/keys' },
