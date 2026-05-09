@@ -54,6 +54,7 @@ const SDK_PRESETS: Record<LLMProvider, BaseUrlPreset[]> = {
     { name: '智谱 AI', baseUrl: 'https://open.bigmodel.cn/api/anthropic', actionLabel: '注册', actionUrl: 'https://www.bigmodel.cn/glm-coding?ic=NZ1MQISIX0' },
     { name: 'MiniMax', baseUrl: 'https://api.minimaxi.com/anthropic', actionLabel: '注册', actionUrl: 'https://platform.minimaxi.com/subscribe/token-plan?code=FapfOonxo7&source=link' },
     { name: 'Anthropic', baseUrl: 'https://api.anthropic.com', actionLabel: '注册', actionUrl: 'https://console.anthropic.com/settings/keys' },
+    { name: '小米 Token Plan', baseUrl: 'https://token-plan-cn.xiaomimimo.com/anthropic', actionLabel: '注册', actionUrl: 'https://platform.xiaomimimo.com?ref=HFFE2V' },
     { name: '腾讯云 Coding Plan', baseUrl: 'https://api.lkeap.cloud.tencent.com/plan/anthropic', actionLabel: '注册', actionUrl: 'https://curl.qcloud.com/xyTqcIlB' },
     { name: '阿里云 Coding Plan', baseUrl: 'https://coding.dashscope.aliyuncs.com/apps/anthropic', actionLabel: '注册', actionUrl: 'https://www.aliyun.com/minisite/goods?userCode=e9b0x8ku' },
     { name: '火山 Coding Plan', baseUrl: 'https://ark.cn-beijing.volces.com/api/coding', actionLabel: '注册', actionUrl: 'https://volcengine.com/L/8ziM51O_5WU/' },

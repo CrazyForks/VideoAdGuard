@@ -624,7 +624,6 @@ class AdDetector {
 
       } else {
         console.log('【VideoAdGuard】无广告内容');
-        this.adDetectionResult = (this.adDetectionResult ? this.adDetectionResult + ' | ' : '') + '无广告内容';
         this.removeAutoSkipListener();
 
         await CacheService.saveDetectionResult(bvid, false, [], [], false);
