@@ -9,4 +9,4 @@ invocation_logs = true
 
 [[kv_namespaces]]
 binding = "VIDEO_AD_GUARD_KV"
-id = "d9e25787b49047bd99a0d7287324bcfd"
+id = "08a99ada656045448949a9c1c91fad37"

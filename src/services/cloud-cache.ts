@@ -3,7 +3,7 @@ import { RemoteAdRecord } from '../types/cloud-cache';
 const CLIENT_VERSION = '1.4.0';
 
 // 默认云端端点
-const DEFAULT_WORKER_URL = 'https://videoadguard-api.xiaobaozi.cn';
+const DEFAULT_WORKER_URL = 'https://videoadguard-api.0100320.xyz';
 
 interface WorkerResponse<T = unknown> {
   success: boolean;

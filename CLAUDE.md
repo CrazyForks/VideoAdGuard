@@ -22,7 +22,7 @@ cd worker
 npx wrangler deploy
 ```
 
-部署地址：`https://videoadguard-api.xiaobaozi.cn`
+部署地址：`https://videoadguard-api.0100320.xyz`
 
 当你完成一项完整的修改后，运行构建命令，确认构建正确后便于我测试。
 
@@ -87,7 +87,7 @@ Webpack 通过别名替换 `./services/audio`：
 - Rate Limiting（GET 2次/秒，POST 10次/分）
 - 云端服务异常时静默降级，不影响本地检测
 
-**Worker 部署：** `https://videoadguard-api.xiaobaozi.cn`
+**Worker 部署：** `https://videoadguard-api.0100320.xyz`
 
 ### 关键技术细节
 - **AV to BV 转换**：`BilibiliService.convertAvToBv()` 本地算法
